@@ -183,6 +183,12 @@ describe('terminal', function()
     end)
   end)
 
+  it('sets the claude-code filetype', function()
+    exec_lua(function()
+      h.eq('claude-code', vim.bo[cc.open()].filetype)
+    end)
+  end)
+
   it('puts :Claude arguments after --settings', function()
     exec_lua(function()
       vim.cmd('Claude --resume x')

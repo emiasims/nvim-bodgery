@@ -19,7 +19,11 @@ local function setup_error(opts)
       end
       return t
     end
-    local ok, err = pcall(require('claude-code').setup, revive(o))
+    local cc = require('claude-code')
+    cc.setup(revive(o))
+    local ok, err = pcall(function()
+      return cc.config
+    end)
     return not ok and err or nil
   end, opts, fn)
 end
@@ -27,11 +31,23 @@ end
 describe('setup', function()
   before_each(require('test.helpers').clear)
 
+  it('loads no other module', function()
+    local loaded = exec_lua(function()
+      require('claude-code').setup()
+      return vim.tbl_filter(function(name)
+        return name:match('^claude%-code%.') ~= nil
+      end, vim.tbl_keys(package.loaded))
+    end)
+    eq({}, loaded)
+  end)
+
   it('leaves one autocmd per event after a second call', function()
     local counts = exec_lua(function()
       local cc = require('claude-code')
       cc.setup()
+      local _ = cc.server
       cc.setup({ cmd = { 'claude', '--verbose' } })
+      local _ = cc.server
       local counts = {}
       for _, au in ipairs(vim.api.nvim_get_autocmds({ group = 'claude-code' })) do
         counts[au.event] = (counts[au.event] or 0) + 1
@@ -52,7 +68,9 @@ describe('setup', function()
     local locks = exec_lua(function()
       local cc = require('claude-code')
       cc.setup()
+      local _ = cc.server
       cc.setup()
+      local _ = cc.server
       return vim.fn.readdir(vim.env.CLAUDE_CONFIG_DIR .. '/ide')
     end)
     eq(1, #locks)
@@ -62,7 +80,9 @@ describe('setup', function()
     local n = exec_lua(function()
       local cc = require('claude-code')
       cc.setup()
+      local _ = cc.server
       cc.setup()
+      local _ = cc.server
       local n = 0
       for _, kind in pairs(require('test.helpers').handles()) do
         n = n + (kind == 'tcp' and 1 or 0)
@@ -82,14 +102,20 @@ describe('setup', function()
     eq({ cmd = { 'other' }, on_busy = 'error' }, config)
   end)
 
-  it('keeps the running configuration when validation fails', function()
-    local cmd = exec_lua(function()
+  it('starts no server when validation fails', function()
+    local n = exec_lua(function()
       local cc = require('claude-code')
-      cc.setup({ cmd = { 'first' } })
-      pcall(cc.setup, { cmd = 'second' })
-      return cc.config.cmd
+      cc.setup({ cmd = 'claude' })
+      pcall(function()
+        return cc.server
+      end)
+      local n = 0
+      for _, kind in pairs(require('test.helpers').handles()) do
+        n = n + (kind == 'tcp' and 1 or 0)
+      end
+      return n
     end)
-    eq({ 'first' }, cmd)
+    eq(0, n)
   end)
 
   local bad = {

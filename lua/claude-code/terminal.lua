@@ -59,6 +59,8 @@ function M.open(opts)
   if job <= 0 then
     error(('claude-code: failed to start %s'):format(launch.cmd[1]))
   end
+  -- filetype detection never runs on terminal buffers
+  vim.bo[bufnr].filetype = 'claude-code'
 
   local term = { bufnr = bufnr, token = token, job = job, cwd = cwd }
   M.terminals[bufnr] = term

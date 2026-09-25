@@ -88,34 +88,26 @@ local function relaunch(bufnr, entry)
   end)
 end
 
---- @param group integer
-function M.attach(group)
-  vim.api.nvim_create_autocmd('SessionWritePost', { group = group, callback = M.save })
-  vim.api.nvim_create_autocmd('BufNew', {
-    group = group,
-    pattern = 'term://*',
-    callback = function(ev)
-      local entry = read()[ev.match]
-      if entry then
-        -- Neovim's own term:// handler skips buffers with a title
-        vim.b[ev.buf].term_title = ''
-        vim.b[ev.buf].claude_code_restore = entry
-      end
-    end,
-  })
-  vim.api.nvim_create_autocmd('BufReadCmd', {
-    group = group,
-    pattern = 'term://*',
-    nested = true,
-    callback = function(ev)
-      local entry = vim.b[ev.buf].claude_code_restore
-      if entry and vim.bo[ev.buf].channel == 0 then
-        vim.b[ev.buf].claude_code_restore = nil
-        vim.b[ev.buf].term_title = nil
-        relaunch(ev.buf, entry)
-      end
-    end,
-  })
+--- `BufNew` on `term://*`: marks buffers named in the state file for relaunch.
+--- @param ev vim.api.keyset.create_autocmd.callback_args
+function M.on_new(ev)
+  local entry = read()[ev.match]
+  if entry then
+    -- Neovim's own term:// handler skips buffers with a title
+    vim.b[ev.buf].term_title = ''
+    vim.b[ev.buf].claude_code_restore = entry
+  end
+end
+
+--- `BufReadCmd` on `term://*`: relaunches a buffer `on_new` marked.
+--- @param ev vim.api.keyset.create_autocmd.callback_args
+function M.on_read(ev)
+  local entry = vim.b[ev.buf].claude_code_restore
+  if entry and vim.bo[ev.buf].channel == 0 then
+    vim.b[ev.buf].claude_code_restore = nil
+    vim.b[ev.buf].term_title = nil
+    relaunch(ev.buf, entry)
+  end
 end
 
 return M

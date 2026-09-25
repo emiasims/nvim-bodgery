@@ -6,6 +6,7 @@ local M = {}
 --- @param done fun()
 --- @return fun() cancel
 function M.edit(file, done)
+  vim.filetype.add({ filename = { [file] = 'claude-prompt' } })
   require('claude-code').config.editor.open(file)
   local bufnr = vim.fn.bufnr(file)
   local group = vim.api.nvim_create_augroup('claude-code.editor.' .. bufnr, { clear = true })

@@ -1,18 +1,51 @@
+--- Fields in `lazy` load on first read.
+--- @class claude-code
+--- @field config claude-code.Config
+--- @field server claude-code.http.Server
+--- @field harness table
 local M = {}
 
---- @type claude-code.Config?
-M.config = nil
+--- @type table? options from the last `setup()` call
+local setup_opts
 
---- @type claude-code.http.Server?
-M.server = nil
+local lazy = {}
 
-M.harness = require('claude-code.harness.claude')
+function lazy.config()
+  return require('claude-code.config').resolve(setup_opts)
+end
 
---- Stops the server and removes the lockfile. `setup()` starts them again.
+function lazy.harness()
+  return require('claude-code.harness.claude')
+end
+
+function lazy.server()
+  assert(setup_opts, 'claude-code: call setup() first')
+  local mcp = require('claude-code.server.mcp')
+  local terminal = require('claude-code.terminal')
+  -- resolve first so a bad option fails before anything listens
+  local _ = M.config
+  local server = require('claude-code.server.http').start({ auth = terminal.lookup })
+  server:route(mcp.http_route(mcp.new({ name = 'nvim', tools = require('claude-code.tools').list }), '/mcp'))
+  require('claude-code.editor').register(server)
+  M.harness.start(server)
+  return server
+end
+
+setmetatable(M, {
+  __index = function(_, key)
+    if lazy[key] then
+      rawset(M, key, lazy[key]())
+      return rawget(M, key)
+    end
+  end,
+})
+
+--- Stops the server and removes the lockfile. The next use starts them again.
 function M.stop()
-  M.harness.stop()
-  if M.server then
-    M.server:stop()
+  local server = rawget(M, 'server')
+  if server then
+    M.harness.stop()
+    server:stop()
     M.server = nil
   end
 end
@@ -128,32 +161,42 @@ function M.subtasks(session_id)
   return M.harness.subtasks(session_id)
 end
 
---- Configures the plugin and starts the server. Calling it again replaces the previous
---- configuration and server.
+--- Configures the plugin. Modules load, options are validated, and the server starts on
+--- first use. Calling it again stops the server and replaces the configuration.
 --- @param opts? table see |claude-code.Config|
 function M.setup(opts)
-  -- validate first so a bad call leaves the running configuration intact
-  local config = require('claude-code.config').resolve(opts)
   M.stop()
-  M.config = config
+  setup_opts = opts or {}
+  M.config = nil
 
   local group = vim.api.nvim_create_augroup('claude-code', { clear = true })
   vim.api.nvim_create_autocmd('VimLeavePre', { group = group, callback = M.stop })
 
   vim.api.nvim_create_user_command('Claude', function(ev)
     M.open({ args = ev.fargs, mods = ev.smods })
-    vim.cmd.startinsert()
   end, { nargs = '*', desc = 'Start Claude in a split' })
 
-  local mcp = require('claude-code.server.mcp')
-  local terminal = require('claude-code.terminal')
-  M.server = require('claude-code.server.http').start({ auth = terminal.lookup })
-  M.server:route(
-    mcp.http_route(mcp.new({ name = 'nvim', tools = require('claude-code.tools').list }), '/mcp')
-  )
-  require('claude-code.editor').register(M.server)
-  M.harness.start(M.server)
-  require('claude-code.restore').attach(group)
+  vim.api.nvim_create_autocmd('SessionWritePost', {
+    group = group,
+    callback = function()
+      require('claude-code.restore').save()
+    end,
+  })
+  vim.api.nvim_create_autocmd('BufNew', {
+    group = group,
+    pattern = 'term://*',
+    callback = function(ev)
+      require('claude-code.restore').on_new(ev)
+    end,
+  })
+  vim.api.nvim_create_autocmd('BufReadCmd', {
+    group = group,
+    pattern = 'term://*',
+    nested = true,
+    callback = function(ev)
+      require('claude-code.restore').on_read(ev)
+    end,
+  })
 end
 
 return M

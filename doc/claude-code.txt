@@ -21,10 +21,16 @@ SETUP                                                      *claude-code-setup*
 >lua
   require('claude-code').setup({})
 <
-`setup()` starts a localhost server that carries Claude's hooks, the `nvim`
-MCP server, and the IDE websocket, and writes the lockfile Claude's `/ide`
-command reads (`$CLAUDE_CONFIG_DIR/ide/<port>.lock`, or `~/.claude/ide/`).
-Calling it again replaces the configuration and restarts the server.
+`setup()` stores the options and defines |:Claude| and the session restore
+autocommands. It loads no other module. The first terminal opened starts a
+localhost server that carries Claude's hooks, the `nvim` MCP server, and the
+IDE websocket, and writes the lockfile Claude's `/ide` command reads
+(`$CLAUDE_CONFIG_DIR/ide/<port>.lock`, or `~/.claude/ide/`). Options are
+validated when first read, so a bad option raises then. Calling `setup()`
+again stops the server and replaces the configuration.
+
+Claude terminals get the `claude-code` filetype, and drafts opened from the
+prompt editor get `claude-prompt`.
 
 Only terminals opened by the plugin (|:Claude|, |claude-code.open()|) get
 hooks, events, and custom tools. Each terminal authenticates with its own
