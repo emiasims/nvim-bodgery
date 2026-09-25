@@ -195,9 +195,9 @@ describe('terminal', function()
     end)
   end)
 
-  it('sets the claude-code filetype', function()
+  it('sets the harness name as the filetype', function()
     exec_lua(function()
-      h.eq('claude-code', vim.bo[cc.open()].filetype)
+      h.eq('claude', vim.bo[cc.open()].filetype)
     end)
   end)
 

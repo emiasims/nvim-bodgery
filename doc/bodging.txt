@@ -34,8 +34,8 @@ IDE websocket, and writes the lockfile Claude's `/ide` command reads
 (`$CLAUDE_CONFIG_DIR/ide/<port>.lock`, or `~/.claude/ide/`). Options are
 validated when first read, so a bad option raises then.
 
-Claude terminals get the `claude-code` filetype, and drafts opened from the
-prompt editor get `claude-prompt`.
+Terminals get the harness name as their filetype (`claude`), and drafts opened
+from the prompt editor get `bodge-prompt`.
 
 Only terminals opened by the plugin (|:Claude|, |bodging.open()|) get
 hooks, events, and custom tools. Each terminal authenticates with its own

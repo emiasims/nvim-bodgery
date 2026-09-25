@@ -66,7 +66,7 @@ function M.open(opts)
     error(('bodging: failed to start %s'):format(launch.cmd[1]))
   end
   -- filetype detection never runs on terminal buffers
-  vim.bo[bufnr].filetype = 'claude-code'
+  vim.bo[bufnr].filetype = config.harness
 
   local term = { bufnr = bufnr, token = token, job = job, cwd = cwd, config = config, harness = harness }
   M.terminals[bufnr] = term
