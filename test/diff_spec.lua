@@ -222,7 +222,7 @@ describe('diff', function()
 
       open_diff('i', 'one\nA B C\nnew line\nthree\n')
       h.eq({
-        { 1, 0, 'DiffChange' },
+        { 1, 0, 'DiffChange', 0 },
         { 1, 2, 'DiffText', 4 },
         { 2, 0, 'DiffAdd' },
         { 3, 0, nil, nil, nil, 'four' },
@@ -231,7 +231,7 @@ describe('diff', function()
       reply()
 
       open_diff('d', 'one\nA\nthree\nfour\n')
-      h.eq({ { 1, 0, 'DiffChange' }, { 1, 1, nil, nil, ' C' } }, marks(diff.pending.d.bufnr))
+      h.eq({ { 1, 0, 'DiffChange', 0 }, { 1, 1, nil, nil, ' C' } }, marks(diff.pending.d.bufnr))
       vim.cmd.bdelete(diff.pending.d.bufnr)
       reply()
 
@@ -257,6 +257,35 @@ describe('diff', function()
     end)
   end)
 
+  it('draws inserted characters over the changed line', function()
+    local Screen = require('nvim-test.screen')
+    local screen = Screen.new(30, 8)
+    screen:attach()
+    exec_lua(function()
+      vim.fn.writefile({ '1', '2', '4', '6', '8' }, path)
+      open_diff('t', '1\n2\n3\n4 and more\n8\n10\n')
+      vim.cmd('normal! gg')
+    end)
+    screen:expect({
+      grid = [[
+      ^1                             |
+      2                             |
+      {1:3                             }|
+      {2:4}{3: and more}{2:                    }|
+      {4:6                             }|
+      8                             |
+      {1:10                            }|
+                                    |
+    ]],
+      attr_ids = {
+        [1] = { background = Screen.colors.NvimLightGreen, foreground = Screen.colors.NvimDarkGrey1 },
+        [2] = { background = Screen.colors.NvimLightGrey4, foreground = Screen.colors.NvimDarkGrey1 },
+        [3] = { background = Screen.colors.NvimLightCyan, foreground = Screen.colors.NvimDarkGrey1 },
+        [4] = { foreground = Screen.colors.NvimDarkRed, bold = true },
+      },
+    })
+  end)
+
   describe('window', function()
     it('opens a vertical split when Claude is alone, following splitright', function()
       exec_lua(function()
@@ -268,13 +297,10 @@ describe('diff', function()
           open_diff('t', 'x\n')
           local d = diff.pending.t
           h.eq(true, d.created)
-          h.eq(
-            {
-              'row',
-              { { 'leaf', right and claude_win or d.win }, { 'leaf', right and d.win or claude_win } },
-            },
-            vim.fn.winlayout()
-          )
+          h.eq({
+            'row',
+            { { 'leaf', right and claude_win or d.win }, { 'leaf', right and d.win or claude_win } },
+          }, vim.fn.winlayout())
           h.eq(claude_win, vim.api.nvim_get_current_win())
           vim.cmd.bdelete(d.bufnr)
           reply()

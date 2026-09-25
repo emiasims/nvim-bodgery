@@ -60,7 +60,13 @@ end
 --- @param old string
 --- @param new string
 local function render_inline(bufnr, row, old, new)
-  vim.api.nvim_buf_set_extmark(bufnr, ns, row, 0, { line_hl_group = 'DiffChange' })
+  -- a range to the line's end, since line_hl_group draws over every hl_group in the line
+  vim.api.nvim_buf_set_extmark(bufnr, ns, row, 0, {
+    end_row = row + 1,
+    hl_group = 'DiffChange',
+    hl_eol = true,
+    priority = vim.hl.priorities.user - 1,
+  })
   local a, b = vim.fn.split(old, [[\zs]]), vim.fn.split(new, [[\zs]])
   local off = offsets(b)
   local hunks = vim.text.diff(join(a), join(b), { result_type = 'indices' }) --[[@as integer[][] ]]
