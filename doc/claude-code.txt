@@ -243,6 +243,10 @@ Built in:
   `nvim_help_search`  help tags matching a pattern
   `nvim_helpgrep`     help text matching a pattern, leaving the quickfix
                       list alone
+  `nvim_screen`       the screen as text, one line per row; with
+                      `highlights`, also `{ row, first, last, group }` runs
+                      in 1-based screen cells. Every UI redraws fully once
+                      per call.
 
 Claude also calls `getDiagnostics` before and after each edit. The reply
 covers |vim.diagnostic| entries and treesitter syntax errors in loaded

@@ -79,7 +79,9 @@ The plugin sends Claude:
 
 Tools come from `opts.tools = { name = { description, input_schema, handler = function(args, ctx) ... end } }` or `tool(name, spec)`. Handlers run in the main Neovim, and `ctx` carries `session_id` and the terminal `bufnr`. Claude sees them as `mcp__nvim__<name>`. The tool list is read on every `tools/list`, so tools registered mid-session appear without a restart.
 
-Built in: `nvim_help(tag)` returns the section from a tag to the next tag, `nvim_help_search(pattern)` matches tag names through `taglist()`, and `nvim_helpgrep(pattern)` searches full text. `nvim_screen({ highlights? })` returns the screen as text, optionally with highlight group runs.
+Built in: `nvim_help(tag)` returns the section from a tag to the next tag, `nvim_help_search(pattern)` matches tag names through `taglist()`, and `nvim_helpgrep(pattern)` searches full text. `nvim_screen({ highlights? })` returns the screen as text, optionally with runs of `{ row, first, last, group }` in 1-based screen cells.
+
+`nvim_screen` reads the screen by attaching a UI to Neovim's own server (`v:servername`) over a `vim.uv` pipe, with `ext_linegrid` and `ext_hlstate`, and detaching after the first flush that draws the grid. `ext_hlstate` names the group behind each cell (`ui_name` for built-in UI groups such as `EndOfBuffer`, otherwise `hi_name`), which `screenattr()` can't, since it returns only numeric ids. The UI gets `'columns'` by `'lines'`, so attaching doesn't resize the screen, but it forces a full redraw on every UI. The reply is deferred, because Neovim draws only after the handler returns to the event loop.
 
 ## Data
 

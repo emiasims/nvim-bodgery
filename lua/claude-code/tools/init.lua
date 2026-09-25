@@ -10,7 +10,7 @@ function M.register(name, spec)
   registered[name] = spec
 end
 
---- The built-in help tools and every tool from `opts.tools` and `register()`, sorted by
+--- The built-in help and screen tools and every tool from `opts.tools` and `register()`, sorted by
 --- name. A user tool with a built-in's name replaces it. Handlers receive
 --- `ctx = { session_id, bufnr }` for the calling terminal.
 --- @return claude-code.mcp.Tool[]
@@ -19,6 +19,7 @@ function M.list()
     'force',
     {},
     require('claude-code.tools.help').tools,
+    { nvim_screen = require('claude-code.tools.screen').tool },
     require('claude-code').config.tools,
     registered
   )

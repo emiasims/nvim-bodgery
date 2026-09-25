@@ -264,13 +264,13 @@ Tests:
 
 ### 16. Screen tool
 
-`tools/screen.lua` adds a built-in `nvim_screen` tool returning what the user sees: the whole grid as text, one line per screen row, read with `screenstring()`, including windows, status lines, tabline, and command line. With `highlights = true` it also returns runs of cells sharing a highlight, with group names. `screenattr()` gives only numeric ids, so how to recover names (per-window `vim.inspect_pos()`, or attaching a UI with `ext_hlstate` over `serverstart()`) is settled at the start of the step. Claude's own terminal is part of the capture.
+`tools/screen.lua` adds a built-in `nvim_screen` tool returning what the user sees: the whole grid as text, one line per screen row, including windows, status lines, tabline, and command line. With `highlights = true` it also returns runs of cells sharing a highlight, with group names. The capture mechanism is in DECISIONS.md. Claude's own terminal is part of the capture.
 
-Tests, with nvim-test's attached screen:
+Tests, with nvim-test's screen attached as a second UI:
 
-- a buffer with known lines appears at its window's rows, and the status line and command line rows match `screen:expect`
-- wide characters and a vertical split keep every row at `&columns` cells
-- with `highlights`, a line highlighted with a known group reports that group over the right columns
+- a vertical split holding a line with wide characters comes back row for row, status lines and command line included
+- with `highlights`, a window-local `matchadd` reports its group over the right columns of that window only, alongside the built-in UI groups
+- a screen not drawn within the timeout returns `isError`
 
 ### 17. Manual checklist with real Claude
 
