@@ -63,7 +63,7 @@ Claude calls these on the editor:
 
 The plugin sends Claude:
 
-- `selection_changed` on `WinLeave` from file windows and on `ModeChanged` out of visual mode (range from `'<` and `'>`), never from Claude terminals. Claude attaches the most recent one to the next prompt, as selected lines or as "user opened file X". Automatic sending can be disabled.
+- `selection_changed` on `WinLeave` from file windows and on `ModeChanged` out of visual mode (range from `'<` and `'>`), never from Claude terminals. Claude attaches the most recent one to the next prompt, as selected lines or as "user opened file X". Claude reads only the line numbers, and an end at character 0 excludes that line, so a linewise selection ends at character 0 of the line after it. Leaving a window right after a visual selection, with the cursor and buffer unchanged, sends nothing, so the selection survives the move to the terminal. Automatic sending can be disabled.
 - `at_mentioned` from `send_at_mention(range)`. `send_selection()` sends a selection on demand.
 
 ## Custom MCP tools

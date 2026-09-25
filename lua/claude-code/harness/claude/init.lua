@@ -1,4 +1,5 @@
 local hooks = require('claude-code.harness.claude.hooks')
+local ide = require('claude-code.harness.claude.ide')
 local launch = require('claude-code.harness.claude.launch')
 local mcp = require('claude-code.server.mcp')
 local ws = require('claude-code.server.ws')
@@ -8,6 +9,8 @@ local M = {}
 M.capabilities = { ide = true, resume_in_place = true }
 
 M.on_hook = hooks.on_hook
+M.send_selection = ide.send_selection
+M.send_at_mention = ide.send_at_mention
 
 --- @class claude-code.claude.State
 --- @field port integer
@@ -51,13 +54,23 @@ function M.start(server)
 
   hooks.register(server)
 
-  local ide = mcp.new({ name = 'nvim-ide', tools = require('claude-code.harness.claude.ide').tools })
-  server:route(ws.route(vim.tbl_extend('force', mcp.ws_handlers(ide), {
+  local handlers = mcp.ws_handlers(mcp.new({ name = 'nvim-ide', tools = ide.tools }))
+  server:route(ws.route({
     path = '/',
     token = function()
       return state.auth_token
     end,
-  })))
+    on_open = function(conn)
+      ide.clients[conn] = true
+      handlers.on_open(conn)
+    end,
+    on_message = handlers.on_message,
+    on_close = function(conn)
+      ide.clients[conn] = nil
+      handlers.on_close(conn)
+    end,
+  }))
+  ide.attach(vim.api.nvim_create_augroup('claude-code', { clear = false }))
 end
 
 --- Removes the lockfile and the launch files.

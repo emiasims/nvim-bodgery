@@ -31,6 +31,17 @@ function M.tool(name, spec)
   require('claude-code.tools').register(name, spec)
 end
 
+--- Sends the current visual selection to Claude, or the last one in this buffer.
+function M.send_selection()
+  M.harness.send_selection()
+end
+
+--- Mentions the current file in Claude's prompt, optionally with a line range.
+--- @param range? integer[] first and last line, 1-based
+function M.send_at_mention(range)
+  M.harness.send_at_mention(range)
+end
+
 --- Files Claude read or edited in a session.
 --- @param session_id string
 --- @return string[]
