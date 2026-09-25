@@ -6,7 +6,7 @@ describe('http server', function()
     helpers.clear()
     exec_lua(function()
       _G.h = require('test.helpers')
-      _G.http = require('claude-code.server.http')
+      _G.http = require('bodging.server.http')
       _G.before = h.handles()
       _G.calls = {}
       _G.server = http.start({

@@ -6,12 +6,12 @@ M.max_results = 50
 --- Lines returned by `nvim_help` before the section is cut.
 M.max_lines = 300
 
---- @class claude-code.HelpTag
+--- @class bodging.HelpTag
 --- @field name string
 --- @field file string absolute path of the help file
 
 --- Tags from every `doc/tags` on 'runtimepath', first occurrence winning, as `:help` does.
---- @return claude-code.HelpTag[]
+--- @return bodging.HelpTag[]
 local function tags()
   local out, seen = {}, {}
   for _, tagfile in ipairs(vim.api.nvim_get_runtime_file('doc/tags', true)) do
@@ -149,7 +149,7 @@ end
 --- @param key string
 --- @param description string
 --- @param fn fun(arg: string): string
---- @return claude-code.ToolSpec
+--- @return bodging.ToolSpec
 local function spec(key, description, fn)
   return {
     description = description,
@@ -164,7 +164,7 @@ local function spec(key, description, fn)
   }
 end
 
---- @type table<string, claude-code.ToolSpec>
+--- @type table<string, bodging.ToolSpec>
 M.tools = {
   nvim_help = spec(
     'tag',

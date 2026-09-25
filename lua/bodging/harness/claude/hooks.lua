@@ -1,11 +1,11 @@
-local events = require('claude-code.events')
+local events = require('bodging.events')
 
 local M = {}
 
 local FILE_TOOLS =
   { Read = 'file_path', Edit = 'file_path', Write = 'file_path', NotebookEdit = 'notebook_path' }
 
---- @class claude-code.Subtask
+--- @class bodging.Subtask
 --- @field id string
 --- @field kind 'agent'|'bash'
 --- @field description? string
@@ -13,7 +13,7 @@ local FILE_TOOLS =
 --- @field path? string the agent's transcript, or a finished background command's output
 
 --- Live state from hooks, per session id.
---- @type table<string, { touched: string[], subtasks: table<string, claude-code.Subtask> }>
+--- @type table<string, { touched: string[], subtasks: table<string, bodging.Subtask> }>
 M.sessions = {}
 
 --- @param id string
@@ -22,13 +22,13 @@ local function session(id)
   return M.sessions[id]
 end
 
---- @param term claude-code.Terminal
+--- @param term bodging.Terminal
 --- @param extra? table
 local function data(term, extra)
   return vim.tbl_extend('force', { session_id = term.session_id, bufnr = term.bufnr }, extra or {})
 end
 
---- @param term claude-code.Terminal
+--- @param term bodging.Terminal
 --- @param status 'busy'|'idle'|'waiting'
 local function set_status(term, status)
   if term.status ~= status then
@@ -37,7 +37,7 @@ local function set_status(term, status)
   end
 end
 
---- @param term claude-code.Terminal
+--- @param term bodging.Terminal
 local function leave(term)
   if term.session_id then
     events.fire('ClaudeSessionLeave', data(term))
@@ -45,15 +45,15 @@ local function leave(term)
   end
 end
 
---- @param term claude-code.Terminal
---- @param subtask claude-code.Subtask
+--- @param term bodging.Terminal
+--- @param subtask bodging.Subtask
 local function open_subtask(term, subtask)
   session(term.session_id).subtasks[subtask.id] = subtask
   events.fire('ClaudeSubtaskOpen', data(term, { subtask = subtask }))
 end
 
---- @param term claude-code.Terminal
---- @param subtask claude-code.Subtask
+--- @param term bodging.Terminal
+--- @param subtask bodging.Subtask
 local function close_subtask(term, subtask)
   if subtask.open then
     subtask.open = false
@@ -62,7 +62,7 @@ local function close_subtask(term, subtask)
 end
 
 --- Closes background Bash subtasks missing from a Stop payload's `background_tasks`.
---- @param term claude-code.Terminal
+--- @param term bodging.Terminal
 --- @param running? { id: string }[]
 local function sweep_background(term, running)
   if not running then
@@ -79,7 +79,7 @@ local function sweep_background(term, running)
   end
 end
 
---- @param term claude-code.Terminal
+--- @param term bodging.Terminal
 --- @param input table
 local function touch(term, input)
   local key = FILE_TOOLS[input.tool_name]
@@ -97,7 +97,7 @@ end
 --- Updates terminal state and fires events for one hook payload.
 --- @param event string
 --- @param input table
---- @param term claude-code.Terminal
+--- @param term bodging.Terminal
 function M.on_hook(event, input, term)
   if event == 'SessionStart' then
     if term.session_id ~= input.session_id then
@@ -159,9 +159,9 @@ function M.on_hook(event, input, term)
 end
 
 --- Serves `POST /hooks/<Event>` for every registered hook event.
---- @param server claude-code.http.Server
+--- @param server bodging.http.Server
 function M.register(server)
-  for _, event in ipairs(require('claude-code.config').hook_events) do
+  for _, event in ipairs(require('bodging.config').hook_events) do
     server:route({
       method = 'POST',
       path = '/hooks/' .. event,
@@ -170,7 +170,7 @@ function M.register(server)
         if not ok or type(input) ~= 'table' then
           return 400, { error = 'expected a JSON object' }
         end
-        --- @type claude-code.Terminal
+        --- @type bodging.Terminal
         local term = req.ctx
         M.on_hook(event, input, term)
 
@@ -180,7 +180,7 @@ function M.register(server)
         end
         local cok, result = pcall(callback, input, { session_id = term.session_id, bufnr = term.bufnr })
         if not cok then
-          vim.notify(('claude-code: hooks.%s failed: %s'):format(event, result), vim.log.levels.ERROR)
+          vim.notify(('bodging: hooks.%s failed: %s'):format(event, result), vim.log.levels.ERROR)
           return 200, vim.empty_dict()
         end
         return 200, result == nil and vim.empty_dict() or result

@@ -7,7 +7,7 @@ describe('hooks', function()
     exec_lua(function()
       _G.h = require('test.helpers')
       _G.before = h.handles()
-      _G.cc = require('claude-code')
+      _G.cc = require('bodging')
       _G.notifications = {}
       vim.notify = function(msg)
         notifications[#notifications + 1] = msg
@@ -33,7 +33,7 @@ describe('hooks', function()
       })
       cc.start('claude')
       _G.bufnr = cc.open()
-      _G.token = require('claude-code.terminal').terminals[bufnr].token
+      _G.token = require('bodging.terminal').terminals[bufnr].token
       _G.fired = h.record_events()
       _G.SID = 'session-1'
 
@@ -67,7 +67,7 @@ describe('hooks', function()
     exec_lua(function()
       send('SessionStart-startup')
       h.eq({ { 'ClaudeSessionEnter', { session_id = SID, bufnr = bufnr, source = 'startup' } } }, fired)
-      h.eq(SID, require('claude-code.terminal').terminals[bufnr].session_id)
+      h.eq(SID, require('bodging.terminal').terminals[bufnr].session_id)
     end)
   end)
 
@@ -79,7 +79,7 @@ describe('hooks', function()
       -- asynchronous, since this Neovim serves the request
       vim.system({ 'sh', '-c', settings.hooks.SessionStart[1].hooks[1].command }, {
         stdin = vim.json.encode(h.fixture('SessionStart-startup', { session_id = SID })),
-        env = { CLAUDE_NVIM_TOKEN = token },
+        env = { BODGING_TOKEN = token },
       }, function(res)
         done = res
       end)
@@ -188,7 +188,7 @@ describe('hooks', function()
       send('SessionStart-startup')
       send('SessionEnd')
       h.eq({ 'ClaudeSessionEnter', 'ClaudeSessionLeave' }, names())
-      h.eq(nil, require('claude-code.terminal').terminals[bufnr].session_id)
+      h.eq(nil, require('bodging.terminal').terminals[bufnr].session_id)
     end)
   end)
 

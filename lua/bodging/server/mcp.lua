@@ -1,4 +1,4 @@
-local rpc = require('claude-code.server.rpc')
+local rpc = require('bodging.server.rpc')
 
 local M = {}
 
@@ -7,7 +7,7 @@ M.VERSION = '0.1.0'
 -- newest first; an unknown client version gets the newest
 M.PROTOCOL_VERSIONS = { '2025-06-18', '2025-03-26', '2024-11-05' }
 
---- @class claude-code.mcp.Tool
+--- @class bodging.mcp.Tool
 --- @field name string
 --- @field description string
 --- @field input_schema? table JSON schema for the arguments
@@ -34,12 +34,12 @@ local function error_result(err)
   return { content = { { type = 'text', text = tostring(err) } }, isError = true }
 end
 
---- @class claude-code.mcp.Opts
+--- @class bodging.mcp.Opts
 --- @field name string server name shown to Claude
---- @field tools fun(ctx: table): claude-code.mcp.Tool[]
+--- @field tools fun(ctx: table): bodging.mcp.Tool[]
 
---- @param opts claude-code.mcp.Opts
---- @return claude-code.rpc.Dispatcher
+--- @param opts bodging.mcp.Opts
+--- @return bodging.rpc.Dispatcher
 function M.new(opts)
   local d = rpc.new()
 
@@ -100,9 +100,9 @@ end
 
 --- Serves `dispatcher` on `POST <path>` with JSON replies. `initialize` issues an
 --- `Mcp-Session-Id` that later requests must carry.
---- @param dispatcher claude-code.rpc.Dispatcher
+--- @param dispatcher bodging.rpc.Dispatcher
 --- @param path string
---- @return claude-code.http.Route
+--- @return bodging.http.Route
 function M.http_route(dispatcher, path)
   local sessions = {}
   return {
@@ -142,8 +142,8 @@ function M.http_route(dispatcher, path)
 end
 
 --- Websocket callbacks serving `dispatcher`, one RPC connection per socket.
---- @param dispatcher claude-code.rpc.Dispatcher
---- @return { on_open: fun(conn: claude-code.ws.Conn), on_message: fun(conn: claude-code.ws.Conn, text: string), on_close: fun(conn: claude-code.ws.Conn) }
+--- @param dispatcher bodging.rpc.Dispatcher
+--- @return { on_open: fun(conn: bodging.ws.Conn), on_message: fun(conn: bodging.ws.Conn, text: string), on_close: fun(conn: bodging.ws.Conn) }
 function M.ws_handlers(dispatcher)
   local conns = setmetatable({}, { __mode = 'k' })
   return {

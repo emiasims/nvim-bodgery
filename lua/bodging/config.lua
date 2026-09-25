@@ -1,16 +1,16 @@
 local M = {}
 
---- @class claude-code.ToolSpec
+--- @class bodging.ToolSpec
 --- @field description string
 --- @field input_schema? table
 --- @field handler fun(args: table, ctx: { session_id: string?, bufnr: integer }): any
 
---- @class claude-code.Config
---- @field name string key in |claude-code.configs|, defaults to `harness`
---- @field harness string key in |claude-code.harnesses|
+--- @class bodging.Config
+--- @field name string key in |bodging.configs|, defaults to `harness`
+--- @field harness string key in |bodging.harnesses|
 --- @field cmd string[] command and default flags
 --- @field hooks table<string, fun(input: table): table?> hook event name to callback
---- @field tools table<string, claude-code.ToolSpec>
+--- @field tools table<string, bodging.ToolSpec>
 --- @field execute_code boolean serve the `executeCode` IDE tool
 --- @field selection { auto: boolean } send `selection_changed` automatically
 --- @field on_busy 'error'|'interrupt'|'queue'|'prompt'
@@ -37,7 +37,7 @@ M.defaults = {
   diff = {
     inline = true,
     window = function()
-      return require('claude-code.terminal').pick_window()
+      return require('bodging.terminal').pick_window()
     end,
   },
   ccd_dir = vim.fs.normalize('~/Library/Application Support/Claude/claude-code-sessions'),
@@ -80,7 +80,7 @@ local schema = {
 }
 
 local function fail(fmt, ...)
-  error('claude-code: ' .. fmt:format(...), 0)
+  error('bodging: ' .. fmt:format(...), 0)
 end
 
 local function expect(name, value, expected, optional)
@@ -115,7 +115,7 @@ local function validate(opts)
     end
   end
 
-  if not require('claude-code').harnesses._submodules[opts.harness] then
+  if not require('bodging').harnesses._submodules[opts.harness] then
     fail('harness: unknown harness %q', opts.harness)
   end
 
@@ -148,7 +148,7 @@ end
 
 --- Validates `opts` and merges it over the defaults.
 --- @param opts? table
---- @return claude-code.Config
+--- @return bodging.Config
 function M.resolve(opts)
   opts = opts or {}
   expect('opts', opts, 'table')

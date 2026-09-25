@@ -6,8 +6,8 @@ describe('json-rpc and mcp', function()
     helpers.clear()
     exec_lua(function()
       _G.h = require('test.helpers')
-      local mcp = require('claude-code.server.mcp')
-      local ws = require('claude-code.server.ws')
+      local mcp = require('bodging.server.mcp')
+      local ws = require('bodging.server.ws')
       _G.before = h.handles()
       _G.cancelled = 0
       _G.resolved = {}
@@ -46,7 +46,7 @@ describe('json-rpc and mcp', function()
         end
       end)
 
-      _G.server = require('claude-code.server.http').start({
+      _G.server = require('bodging.server.http').start({
         auth = function(token)
           return token == 'good' and {} or nil
         end,

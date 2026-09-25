@@ -2,14 +2,14 @@ local uv = vim.uv
 
 local M = {}
 
-M.TOKEN_ENV = 'CLAUDE_NVIM_TOKEN'
+M.TOKEN_ENV = 'BODGING_TOKEN'
 
-local root = vim.fs.normalize(debug.getinfo(1, 'S').source:sub(2)):match('^(.*)/lua/claude%-code/')
+local root = vim.fs.normalize(debug.getinfo(1, 'S').source:sub(2)):match('^(.*)/lua/bodging/')
 
 M.editor = vim.fs.joinpath(
   root,
   'bin',
-  vim.fn.has('win32') == 1 and 'claude-code-editor.cmd' or 'claude-code-editor'
+  vim.fn.has('win32') == 1 and 'bodging-editor.cmd' or 'bodging-editor'
 )
 
 --- Claude's config directory: `$CLAUDE_CONFIG_DIR`, else `~/.claude`.
@@ -41,7 +41,7 @@ local TOOL_MATCHER = 'Read|Edit|Write|NotebookEdit|Bash'
 --- @return table settings Claude settings registering the plugin's hooks
 function M.settings(port)
   local hooks = {}
-  for _, event in ipairs(require('claude-code.config').hook_events) do
+  for _, event in ipairs(require('bodging.config').hook_events) do
     local hook
     if event == 'SessionStart' then
       -- Claude skips HTTP hooks for SessionStart, so pipe the input to the same endpoint
@@ -96,7 +96,7 @@ function M.no_proxy(value)
   return table.concat(hosts, ',')
 end
 
---- @class claude-code.claude.LaunchOpts
+--- @class bodging.claude.LaunchOpts
 --- @field cmd string[] the user's command and default flags
 --- @field args? string[] extra arguments for this terminal
 --- @field port integer
@@ -104,7 +104,7 @@ end
 --- @field settings string path of the settings file
 --- @field mcp_config string path of the MCP config file
 
---- @param opts claude-code.claude.LaunchOpts
+--- @param opts bodging.claude.LaunchOpts
 --- @return { cmd: string[], env: table<string, string> }
 function M.build(opts)
   local cmd = vim.list_extend({}, opts.cmd)

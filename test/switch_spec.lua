@@ -7,10 +7,10 @@ describe('switch', function()
     exec_lua(function()
       _G.h = require('test.helpers')
       _G.before = h.handles()
-      _G.cc = require('claude-code')
+      _G.cc = require('bodging')
       cc.setup({ cmd = h.fake_cmd() })
       cc.start('claude')
-      _G.terminal = require('claude-code.terminal')
+      _G.terminal = require('bodging.terminal')
 
       --- Waits until fake-claude in `bufnr` has read `lines` from its terminal.
       function _G.stdin(bufnr, lines)
@@ -53,14 +53,14 @@ describe('switch', function()
         h.eq(false, ok)
         return e
       end
-      h.eq('claude-code: no Claude terminals shown, pass a bufnr or set opts.resolve', err('x'))
+      h.eq('bodging: no Claude terminals shown, pass a bufnr or set opts.resolve', err('x'))
 
       local a = cc.open()
       cc.switch('one')
       h.eq({ '/resume one' }, stdin(a, { 1 }))
 
       local b = cc.open({ mods = { split = 'belowright' } })
-      h.eq('claude-code: 2 Claude terminals shown, pass a bufnr or set opts.resolve', err('x'))
+      h.eq('bodging: 2 Claude terminals shown, pass a bufnr or set opts.resolve', err('x'))
       cc.switch(b, 'two')
       h.eq({ '/resume two' }, stdin(b, { 1 }))
 
@@ -77,7 +77,7 @@ describe('switch', function()
       local bufnr = cc.open()
       status(bufnr, 'busy')
       local ok, e = pcall(cc.switch, 'x')
-      h.eq({ false, 'claude-code: Claude is busy in buffer ' .. bufnr }, { ok, e })
+      h.eq({ false, 'bodging: Claude is busy in buffer ' .. bufnr }, { ok, e })
 
       cc.configs.claude.on_busy = 'interrupt'
       cc.switch('now')
@@ -128,7 +128,7 @@ describe('switch', function()
 
   it('picks sessions, subtasks, and touched files through vim.ui.select', function()
     exec_lua(function()
-      local pick = require('claude-code.select')
+      local pick = require('bodging.select')
       local cwd = vim.fn.getcwd()
       local dir = vim.env.CLAUDE_CONFIG_DIR .. '/projects/' .. cwd:gsub('[^%w]', '-')
       vim.fn.mkdir(dir, 'p')
@@ -147,7 +147,7 @@ describe('switch', function()
 
       local file = vim.fn.tempname()
       vim.fn.writefile({ 'x' }, file)
-      require('claude-code.harness.claude.hooks').sessions.sid = {
+      require('bodging.harness.claude.hooks').sessions.sid = {
         touched = { file },
         subtasks = { t1 = { id = 't1', kind = 'bash', description = 'sleep', open = true, path = file } },
       }

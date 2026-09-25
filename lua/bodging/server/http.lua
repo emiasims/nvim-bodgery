@@ -16,25 +16,25 @@ local reasons = {
 
 local MAX_HEADER = 64 * 1024
 
---- @class claude-code.http.Request
+--- @class bodging.http.Request
 --- @field method string
 --- @field path string
 --- @field headers table<string, string> lowercase names
 --- @field body string
 --- @field token? string bearer token from `Authorization`
 --- @field ctx any what the auth lookup returned for the token
---- @field conn claude-code.http.Conn
+--- @field conn bodging.http.Conn
 
---- @alias claude-code.http.Respond fun(status: integer, body?: table|string, headers?: table<string, string>)
+--- @alias bodging.http.Respond fun(status: integer, body?: table|string, headers?: table<string, string>)
 
---- @class claude-code.http.Route
+--- @class bodging.http.Route
 --- @field method string
 --- @field path string
---- @field handler fun(req: claude-code.http.Request, respond: claude-code.http.Respond): integer?, (table|string)?, table<string, string>?
+--- @field handler fun(req: bodging.http.Request, respond: bodging.http.Respond): integer?, (table|string)?, table<string, string>?
 --- @field public? boolean skip the bearer token check
 
 --- Parses one request from the front of `buf`.
---- @return claude-code.http.Request|integer|nil req a request, an error status, or nil when incomplete
+--- @return bodging.http.Request|integer|nil req a request, an error status, or nil when incomplete
 --- @return string rest
 local function parse(buf, max_body)
   local head_end = buf:find('\r\n\r\n', 1, true)
@@ -112,7 +112,7 @@ local function parse(buf, max_body)
   end
 
   local connection = (headers['connection'] or ''):lower()
-  --- @type claude-code.http.Request
+  --- @type bodging.http.Request
   local req = {
     method = method,
     path = target:match('^[^?]*'),
@@ -147,7 +147,7 @@ local function format(status, body, headers, close)
   return table.concat(lines, '\r\n') .. '\r\n\r\n' .. body
 end
 
---- @class claude-code.http.Conn
+--- @class bodging.http.Conn
 --- @field tcp uv.uv_tcp_t
 --- @field buf string
 --- @field busy boolean a request is being handled, later ones wait
@@ -155,17 +155,17 @@ end
 --- @field detached boolean another protocol owns the socket
 --- @field on_close? fun()
 
---- @class claude-code.http.Server
+--- @class bodging.http.Server
 --- @field port integer
 --- @field private tcp uv.uv_tcp_t
---- @field private conns table<claude-code.http.Conn, true>
---- @field private routes claude-code.http.Route[]
+--- @field private conns table<bodging.http.Conn, true>
+--- @field private routes bodging.http.Route[]
 --- @field private auth fun(token: string): any
 --- @field private max_body integer
 local Server = {}
 Server.__index = Server
 
---- @param conn claude-code.http.Conn
+--- @param conn bodging.http.Conn
 function Server:close_conn(conn)
   if conn.closed then
     return
@@ -180,11 +180,11 @@ function Server:close_conn(conn)
   end
 end
 
---- @param conn claude-code.http.Conn
---- @param req claude-code.http.Request
+--- @param conn bodging.http.Conn
+--- @param req bodging.http.Request
 function Server:dispatch(conn, req)
   local responded = false
-  --- @type claude-code.http.Respond
+  --- @type bodging.http.Respond
   local function respond(status, body, headers)
     if responded or conn.closed then
       return
@@ -241,7 +241,7 @@ function Server:dispatch(conn, req)
 end
 
 --- Handles buffered requests one at a time, so responses go out in request order.
---- @param conn claude-code.http.Conn
+--- @param conn bodging.http.Conn
 function Server:process(conn)
   if conn.busy or conn.closed or conn.detached then
     return
@@ -265,7 +265,7 @@ end
 
 --- Hands the socket to another protocol. The server stops reading from it but still
 --- closes it on `stop()`.
---- @param conn claude-code.http.Conn
+--- @param conn bodging.http.Conn
 --- @return string rest bytes received after the request
 function M.detach(conn)
   conn.detached = true
@@ -275,14 +275,14 @@ function M.detach(conn)
   return rest
 end
 
---- @param conn claude-code.http.Conn
+--- @param conn bodging.http.Conn
 function M.close(conn)
   conn.server:close_conn(conn)
 end
 
 --- @param client uv.uv_tcp_t
 function Server:accept(client)
-  --- @type claude-code.http.Conn
+  --- @type bodging.http.Conn
   local conn = { tcp = client, buf = '', busy = false, closed = false, detached = false, server = self }
   self.conns[conn] = true
   client:read_start(function(err, data)
@@ -295,7 +295,7 @@ function Server:accept(client)
 end
 
 --- Adds a route. Routes added later win over earlier ones for the same method and path.
---- @param route claude-code.http.Route
+--- @param route bodging.http.Route
 function Server:route(route)
   table.insert(self.routes, 1, route)
 end
@@ -309,14 +309,14 @@ function Server:stop()
   end
 end
 
---- @class claude-code.http.Opts
---- @field routes? claude-code.http.Route[]
+--- @class bodging.http.Opts
+--- @field routes? bodging.http.Route[]
 --- @field auth fun(token: string): any returns a context for a known token, nil otherwise
 --- @field max_body? integer bytes, default 16 MiB
 
 --- Listens on 127.0.0.1 on a port the OS picks.
---- @param opts claude-code.http.Opts
---- @return claude-code.http.Server
+--- @param opts bodging.http.Opts
+--- @return bodging.http.Server
 function M.start(opts)
   local tcp = assert(uv.new_tcp())
   local self = setmetatable({

@@ -1,23 +1,23 @@
 local M = {}
 
---- @class claude-code.Terminal
+--- @class bodging.Terminal
 --- @field bufnr integer
 --- @field token string
 --- @field job integer
 --- @field cwd string
---- @field config claude-code.Config
+--- @field config bodging.Config
 --- @field harness table the module `config.harness` names
 --- @field session_id? string
 --- @field status? 'busy'|'idle'|'waiting'
 
---- @type table<integer, claude-code.Terminal>
+--- @type table<integer, bodging.Terminal>
 M.terminals = {}
 
---- @type table<string, claude-code.Terminal>
+--- @type table<string, bodging.Terminal>
 local by_token = {}
 
 --- @param token string
---- @return claude-code.Terminal?
+--- @return bodging.Terminal?
 function M.lookup(token)
   return by_token[token]
 end
@@ -31,8 +31,8 @@ local function unregister(bufnr)
   end
 end
 
---- @class claude-code.OpenOpts
---- @field config? string config name, defaults to |claude-code.default|
+--- @class bodging.OpenOpts
+--- @field config? string config name, defaults to |bodging.default|
 --- @field cwd? string
 --- @field args? string[] appended to `opts.cmd`
 --- @field mods? vim.api.keyset.cmd_mods open in a split built by `:new` with these modifiers
@@ -41,11 +41,11 @@ end
 
 --- Starts Claude in a terminal. Without `mods` it takes the current window, as `:terminal`
 --- does.
---- @param opts? claude-code.OpenOpts
+--- @param opts? bodging.OpenOpts
 --- @return integer bufnr
 function M.open(opts)
   opts = opts or {}
-  local cc = require('claude-code')
+  local cc = require('bodging')
   -- resolve first so a bad option fails before anything listens
   local config = cc.configs[opts.config or cc.default]
   local harness = cc.harnesses[config.harness]
@@ -63,7 +63,7 @@ function M.open(opts)
   local cwd = opts.cwd or vim.fn.getcwd()
   local job = vim.fn.jobstart(launch.cmd, { term = true, cwd = cwd, env = launch.env })
   if job <= 0 then
-    error(('claude-code: failed to start %s'):format(launch.cmd[1]))
+    error(('bodging: failed to start %s'):format(launch.cmd[1]))
   end
   -- filetype detection never runs on terminal buffers
   vim.bo[bufnr].filetype = 'claude-code'
@@ -86,7 +86,7 @@ end
 M.submit_delay = 100
 
 --- Types `text` into the terminal and submits it.
---- @param term claude-code.Terminal
+--- @param term bodging.Terminal
 --- @param text string
 function M.submit(term, text)
   vim.fn.chansend(term.job, text)
@@ -100,10 +100,10 @@ end
 --- The terminal a call without an explicit target acts on: `bufnr` when given, else the
 --- one Claude terminal shown in the current tab, else `opts.resolve()`.
 --- @param bufnr? integer
---- @return claude-code.Terminal
+--- @return bodging.Terminal
 function M.active(bufnr)
   if bufnr then
-    return M.terminals[bufnr] or error(('claude-code: buffer %d is not a Claude terminal'):format(bufnr), 0)
+    return M.terminals[bufnr] or error(('bodging: buffer %d is not a Claude terminal'):format(bufnr), 0)
   end
   local shown = {}
   for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
@@ -115,14 +115,14 @@ function M.active(bufnr)
   if #shown == 1 then
     return shown[1]
   end
-  local cc = require('claude-code')
+  local cc = require('bodging')
   local resolve = cc.configs[cc.default].resolve
   local resolved = resolve and resolve()
   if resolved and M.terminals[resolved] then
     return M.terminals[resolved]
   end
   error(
-    ('claude-code: %s Claude terminals shown, pass a bufnr or set opts.resolve'):format(
+    ('bodging: %s Claude terminals shown, pass a bufnr or set opts.resolve'):format(
       #shown == 0 and 'no' or #shown
     ),
     0

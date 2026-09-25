@@ -7,17 +7,17 @@ M.INVALID_PARAMS = -32602
 M.INTERNAL_ERROR = -32603
 
 --- A connection that can hold deferred replies. Closing it drops them.
---- @class claude-code.rpc.Conn
+--- @class bodging.rpc.Conn
 --- @field closed boolean
 --- @field pending table<table, fun()?> deferred replies to their cancel callbacks
 
---- @return claude-code.rpc.Conn
+--- @return bodging.rpc.Conn
 function M.conn()
   return { closed = false, pending = {} }
 end
 
 --- Marks `conn` closed and cancels its deferred replies.
---- @param conn claude-code.rpc.Conn
+--- @param conn bodging.rpc.Conn
 function M.close(conn)
   conn.closed = true
   local pending = conn.pending
@@ -38,20 +38,20 @@ end
 
 --- A handler's return: a result, or a function that receives `resolve` (and may return a
 --- cancel callback run when the connection closes first).
---- @alias claude-code.rpc.Handler fun(params: any, ctx: table): any
+--- @alias bodging.rpc.Handler fun(params: any, ctx: table): any
 
---- @class claude-code.rpc.Dispatcher
---- @field methods table<string, claude-code.rpc.Handler>
+--- @class bodging.rpc.Dispatcher
+--- @field methods table<string, bodging.rpc.Handler>
 local Dispatcher = {}
 Dispatcher.__index = Dispatcher
 
---- @return claude-code.rpc.Dispatcher
+--- @return bodging.rpc.Dispatcher
 function M.new()
   return setmetatable({ methods = {} }, Dispatcher)
 end
 
 --- @param name string
---- @param handler claude-code.rpc.Handler
+--- @param handler bodging.rpc.Handler
 function Dispatcher:on(name, handler)
   self.methods[name] = handler
 end
@@ -65,7 +65,7 @@ end
 --- is open.
 --- @param raw string
 --- @param ctx table passed to handlers
---- @param conn claude-code.rpc.Conn
+--- @param conn bodging.rpc.Conn
 --- @param reply fun(response: table?)
 function Dispatcher:handle(raw, ctx, conn, reply)
   local ok, msg = pcall(vim.json.decode, raw, { luanil = { object = true, array = true } })

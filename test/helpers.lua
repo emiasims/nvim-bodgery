@@ -46,7 +46,7 @@ end
 --- @param cond? fun(record: table): any
 --- @return { argv: string[], env: table<string, string>, cwd: string, stdin: string[] }
 function M.record(bufnr, cond)
-  local term = require('claude-code.terminal').terminals[bufnr]
+  local term = require('bodging.terminal').terminals[bufnr]
   local path = ('%s/%s.json'):format(vim.env.FAKE_CLAUDE_RECORD, term.token)
   local rec
   M.wait(function()
@@ -192,11 +192,11 @@ end
 --- @param before table<userdata, string> from `handles()`
 --- @return string[]
 function M.stop_plugin(before)
-  for _, term in pairs(require('claude-code.terminal').terminals) do
+  for _, term in pairs(require('bodging.terminal').terminals) do
     vim.fn.jobstop(term.job)
     vim.fn.jobwait({ term.job }, 1000)
   end
-  require('claude-code').stop()
+  require('bodging').stop()
   return M.leaked(before)
 end
 
@@ -366,18 +366,18 @@ end
 --- @param payload string
 --- @param step? integer
 function Client:send_frame(opcode, payload, step)
-  self:send(require('claude-code.server.ws').encode(opcode, payload, 'abcd'), step)
+  self:send(require('bodging.server.ws').encode(opcode, payload, 'abcd'), step)
 end
 
 --- @param text string
 function Client:send_text(text)
-  self:send_frame(require('claude-code.server.ws').OP.TEXT, text)
+  self:send_frame(require('bodging.server.ws').OP.TEXT, text)
 end
 
 --- Waits for the next frame from the server.
---- @return claude-code.ws.Frame
+--- @return bodging.ws.Frame
 function Client:recv()
-  local ws = require('claude-code.server.ws')
+  local ws = require('bodging.server.ws')
   local frame
   M.wait(function()
     local f, consumed = ws.decode(self.buf)
@@ -400,7 +400,7 @@ function Client:recv_json()
   return vim.json.decode(frame.payload)
 end
 
---- @param frame claude-code.ws.Frame
+--- @param frame bodging.ws.Frame
 --- @return integer
 function M.close_code(frame)
   return frame.payload:byte(1) * 256 + frame.payload:byte(2)

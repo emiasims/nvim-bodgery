@@ -7,7 +7,7 @@ describe('sha1', function()
   it('matches the FIPS 180 vectors', function()
     exec_lua(function()
       local h = require('test.helpers')
-      local sha1 = require('claude-code.server.sha1')
+      local sha1 = require('bodging.server.sha1')
       local function hex(s)
         return (s:gsub('.', function(c)
           return ('%02x'):format(c:byte())
@@ -24,7 +24,7 @@ describe('sha1', function()
       local h = require('test.helpers')
       h.eq(
         's3pPLMBiTxaQ9kYGzzhZRbK+xOo=',
-        require('claude-code.server.ws').accept_key('dGhlIHNhbXBsZSBub25jZQ==')
+        require('bodging.server.ws').accept_key('dGhlIHNhbXBsZSBub25jZQ==')
       )
     end)
   end)
@@ -35,11 +35,11 @@ describe('websocket', function()
     helpers.clear()
     exec_lua(function()
       _G.h = require('test.helpers')
-      _G.ws = require('claude-code.server.ws')
+      _G.ws = require('bodging.server.ws')
       _G.before = h.handles()
       _G.received = {}
       _G.closed = 0
-      _G.server = require('claude-code.server.http').start({
+      _G.server = require('bodging.server.http').start({
         auth = function() end,
         routes = {
           ws.route({

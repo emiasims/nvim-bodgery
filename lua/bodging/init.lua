@@ -1,14 +1,14 @@
---- @class claude-code
-local M = vim._defer_require('claude-code', {
-  config = ..., --- @module 'claude-code.config'
-  editor = ..., --- @module 'claude-code.editor'
-  restore = ..., --- @module 'claude-code.restore'
-  terminal = ..., --- @module 'claude-code.terminal'
-  tools = ..., --- @module 'claude-code.tools'
+--- @class bodging
+local M = vim._defer_require('bodging', {
+  config = ..., --- @module 'bodging.config'
+  editor = ..., --- @module 'bodging.editor'
+  restore = ..., --- @module 'bodging.restore'
+  terminal = ..., --- @module 'bodging.terminal'
+  tools = ..., --- @module 'bodging.tools'
 })
 
-M.harnesses = vim._defer_require('claude-code.harness', {
-  claude = ..., --- @module 'claude-code.harness.claude'
+M.harnesses = vim._defer_require('bodging.harness', {
+  claude = ..., --- @module 'bodging.harness.claude'
 })
 
 --- Name of the config used where no terminal picks one: the first `setup()` call's.
@@ -19,18 +19,18 @@ M.default = nil
 local options = {}
 
 --- Configs by name, validated on first read.
---- @type table<string, claude-code.Config>
+--- @type table<string, bodging.Config>
 M.configs = setmetatable({}, {
   __index = function(configs, name)
     if not options[name] then
-      error(('claude-code: no config named %s, call setup() first'):format(name), 0)
+      error(('bodging: no config named %s, call setup() first'):format(name), 0)
     end
     configs[name] = M.config.resolve(options[name])
     return rawget(configs, name)
   end,
 })
 
---- @type claude-code.http.Server?
+--- @type bodging.http.Server?
 M.server = nil
 
 --- @type table<string, true> harnesses running on `M.server`
@@ -38,11 +38,11 @@ local started = {}
 
 --- Starts the server and `harness` on it unless they are running.
 --- @param harness string
---- @return claude-code.http.Server
+--- @return bodging.http.Server
 function M.start(harness)
   if not M.server then
-    local mcp = require('claude-code.server.mcp')
-    M.server = require('claude-code.server.http').start({ auth = M.terminal.lookup })
+    local mcp = require('bodging.server.mcp')
+    M.server = require('bodging.server.http').start({ auth = M.terminal.lookup })
     M.server:route(mcp.http_route(mcp.new({ name = 'nvim', tools = M.tools.list }), '/mcp'))
     M.editor.register(M.server)
   end
@@ -71,7 +71,7 @@ local function harness()
 end
 
 --- Starts Claude in a terminal and returns its buffer.
---- @param opts? claude-code.OpenOpts
+--- @param opts? bodging.OpenOpts
 --- @return integer bufnr
 function M.open(opts)
   return M.terminal.open(opts)
@@ -79,7 +79,7 @@ end
 
 --- Registers or replaces a custom MCP tool, shown to Claude as `mcp__nvim__<name>`.
 --- @param name string
---- @param spec claude-code.ToolSpec
+--- @param spec bodging.ToolSpec
 function M.tool(name, spec)
   M.tools.register(name, spec)
 end
@@ -95,7 +95,7 @@ function M.send_at_mention(range)
   harness().send_at_mention(range)
 end
 
---- @class claude-code.SwitchOpts
+--- @class bodging.SwitchOpts
 --- @field new? boolean open a new terminal in the current window instead
 
 --- Resumes session `id`: in place by typing the resume command into the active terminal,
@@ -103,11 +103,11 @@ end
 --- `opts.on_busy`.
 --- @param bufnr? integer
 --- @param id string
---- @param opts? claude-code.SwitchOpts
---- @overload fun(id: string, opts?: claude-code.SwitchOpts)
+--- @param opts? bodging.SwitchOpts
+--- @overload fun(id: string, opts?: bodging.SwitchOpts)
 function M.switch(bufnr, id, opts)
   if type(bufnr) == 'string' then
-    bufnr, id, opts = nil, bufnr, id --[[@as claude-code.SwitchOpts?]]
+    bufnr, id, opts = nil, bufnr, id --[[@as bodging.SwitchOpts?]]
   end
   opts = opts or {}
   local terminal = M.terminal
@@ -127,7 +127,7 @@ function M.switch(bufnr, id, opts)
     end,
     queue = function()
       vim.api.nvim_create_autocmd('User', {
-        group = vim.api.nvim_create_augroup('claude-code', { clear = false }),
+        group = vim.api.nvim_create_augroup('bodging', { clear = false }),
         pattern = 'ClaudeStatusChanged',
         callback = function(ev)
           if ev.data.bufnr == term.bufnr and ev.data.status == 'idle' then
@@ -143,7 +143,7 @@ function M.switch(bufnr, id, opts)
   if term.status ~= 'busy' and term.status ~= 'waiting' then
     terminal.submit(term, resume.keys)
   elseif term.config.on_busy == 'error' then
-    error('claude-code: Claude is busy in buffer ' .. term.bufnr, 0)
+    error('bodging: Claude is busy in buffer ' .. term.bufnr, 0)
   elseif term.config.on_busy == 'prompt' then
     vim.ui.select({ 'interrupt', 'queue' }, {
       prompt = 'Claude is busy',
@@ -161,8 +161,8 @@ function M.switch(bufnr, id, opts)
 end
 
 --- Sessions newest first. Breaking out of the loop early skips reading the rest.
---- @param filter? claude-code.SessionFilter
---- @return fun(): claude-code.Session?
+--- @param filter? bodging.SessionFilter
+--- @return fun(): bodging.Session?
 function M.sessions(filter)
   return harness().sessions(filter)
 end
@@ -176,14 +176,14 @@ end
 
 --- Subagents and background tasks of a session.
 --- @param session_id string
---- @return claude-code.Subtask[]
+--- @return bodging.Subtask[]
 function M.subtasks(session_id)
   return harness().subtasks(session_id)
 end
 
 --- Creates or replaces the config named `opts.name`. Options are validated on first read,
 --- and the server starts with the first terminal.
---- @param opts? table see |claude-code.Config|
+--- @param opts? table see |bodging.Config|
 function M.setup(opts)
   vim.validate('opts', opts, 'table', true)
   opts = opts or {}
@@ -192,10 +192,10 @@ function M.setup(opts)
   rawset(M.configs, name, nil)
   M.default = M.default or name
 
-  local group = vim.api.nvim_create_augroup('claude-code', { clear = true })
+  local group = vim.api.nvim_create_augroup('bodging', { clear = true })
   vim.api.nvim_create_autocmd('VimLeavePre', {
     group = group,
-    desc = 'Stop the claude-code server and remove its lockfile',
+    desc = 'Stop the bodging server and remove its lockfile',
     callback = M.stop,
   })
 

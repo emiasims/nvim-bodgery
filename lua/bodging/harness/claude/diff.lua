@@ -1,8 +1,8 @@
 local M = {}
 
-local ns = vim.api.nvim_create_namespace('claude-code.diff')
+local ns = vim.api.nvim_create_namespace('bodging.diff')
 
---- @class claude-code.Diff
+--- @class bodging.Diff
 --- @field tab_name string
 --- @field path string
 --- @field bufnr integer the proposed buffer
@@ -14,7 +14,7 @@ local ns = vim.api.nvim_create_namespace('claude-code.diff')
 --- @field done boolean
 
 --- Open diffs by tab name.
---- @type table<string, claude-code.Diff>
+--- @type table<string, bodging.Diff>
 M.pending = {}
 
 --- @param text string
@@ -91,10 +91,10 @@ end
 
 --- Highlights added lines and shows removed ones as virtual lines where they were. With
 --- `opts.diff.inline`, a changed line that pairs with its old version is marked inline.
---- @param d claude-code.Diff
+--- @param d bodging.Diff
 local function render(d)
   vim.api.nvim_buf_clear_namespace(d.bufnr, ns, 0, -1)
-  local cc = require('claude-code')
+  local cc = require('bodging')
   local inline = cc.configs[cc.default].diff.inline
   local new = vim.api.nvim_buf_get_lines(d.bufnr, 0, -1, false)
   local hunks = vim.text.diff(join(d.old), join(new), {
@@ -134,7 +134,7 @@ local function render(d)
 end
 
 --- Resolves `d` once, then puts its window back and removes the proposed buffer.
---- @param d claude-code.Diff
+--- @param d bodging.Diff
 --- @param res? table nil drops the reply, as on a disconnect
 local function finish(d, res)
   if d.done then
@@ -174,7 +174,7 @@ local function read(path)
   return text
 end
 
---- @class claude-code.OpenDiffArgs
+--- @class bodging.OpenDiffArgs
 --- @field old_file_path string
 --- @field new_file_path string
 --- @field new_file_contents string
@@ -182,9 +182,9 @@ end
 
 --- Shows Claude's proposed contents in one window. `:w` accepts them, with any edits the
 --- user made, and deleting or hiding the buffer rejects them.
---- @param args claude-code.OpenDiffArgs
+--- @param args bodging.OpenDiffArgs
 --- @param resolve fun(result: table)
---- @return claude-code.Diff
+--- @return bodging.Diff
 function M.open(args, resolve)
   local path = args.new_file_path
   for _, other in pairs(M.pending) do
@@ -205,7 +205,7 @@ function M.open(args, resolve)
   bo.fixeol = false
   bo.filetype = vim.filetype.match({ filename = path }) or ''
   -- unique while a previous diff of the same file waits for its scheduled cleanup
-  local name = 'claude-code://' .. path
+  local name = 'bodging://' .. path
   if vim.fn.bufexists(name) == 1 then
     name = ('%s (%d)'):format(name, bufnr)
   end
@@ -213,7 +213,7 @@ function M.open(args, resolve)
   bo.modified = false
 
   local before = vim.api.nvim_list_wins()
-  local cc = require('claude-code')
+  local cc = require('bodging')
   local win = cc.configs[cc.default].diff.window()
   local created = not vim.list_contains(before, win)
   local d = {
@@ -283,7 +283,7 @@ function M.close_all()
 end
 
 --- Closes `d` without replying, for a client that disconnected.
---- @param d claude-code.Diff
+--- @param d bodging.Diff
 function M.cancel(d)
   finish(d)
 end

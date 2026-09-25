@@ -19,7 +19,7 @@ local function setup_error(opts)
       end
       return t
     end
-    local cc = require('claude-code')
+    local cc = require('bodging')
     cc.setup(revive(o))
     local ok, err = pcall(function()
       return cc.configs[cc.default]
@@ -33,9 +33,9 @@ describe('setup', function()
 
   it('loads no other module', function()
     local loaded = exec_lua(function()
-      require('claude-code').setup()
+      require('bodging').setup()
       return vim.tbl_filter(function(name)
-        return name:match('^claude%-code%.') ~= nil
+        return name:match('^bodging%.') ~= nil
       end, vim.tbl_keys(package.loaded))
     end)
     eq({}, loaded)
@@ -43,13 +43,13 @@ describe('setup', function()
 
   it('leaves one autocmd per event after a second call', function()
     local counts = exec_lua(function()
-      local cc = require('claude-code')
+      local cc = require('bodging')
       cc.setup()
       cc.start('claude')
       cc.setup({ cmd = { 'claude', '--verbose' } })
       cc.start('claude')
       local counts = {}
-      for _, au in ipairs(vim.api.nvim_get_autocmds({ group = 'claude-code' })) do
+      for _, au in ipairs(vim.api.nvim_get_autocmds({ group = 'bodging' })) do
         counts[au.event] = (counts[au.event] or 0) + 1
       end
       return counts
@@ -64,7 +64,7 @@ describe('setup', function()
 
   it('removes the previous lockfile on a second call', function()
     local locks = exec_lua(function()
-      local cc = require('claude-code')
+      local cc = require('bodging')
       cc.setup()
       cc.start('claude')
       cc.setup()
@@ -76,7 +76,7 @@ describe('setup', function()
 
   it('leaves one listening server after a second call', function()
     local n = exec_lua(function()
-      local cc = require('claude-code')
+      local cc = require('bodging')
       cc.setup()
       cc.start('claude')
       cc.setup()
@@ -92,7 +92,7 @@ describe('setup', function()
 
   it('replaces the configuration on a second call', function()
     local config = exec_lua(function()
-      local cc = require('claude-code')
+      local cc = require('bodging')
       cc.setup({ cmd = { 'claude', '--verbose' }, on_busy = 'queue' })
       cc.setup({ cmd = { 'other' } })
       return { cmd = cc.configs.claude.cmd, on_busy = cc.configs.claude.on_busy }
@@ -102,7 +102,7 @@ describe('setup', function()
 
   it('starts no server when validation fails', function()
     local n = exec_lua(function()
-      local cc = require('claude-code')
+      local cc = require('bodging')
       cc.setup({ cmd = 'claude' })
       pcall(cc.open)
       local n = 0

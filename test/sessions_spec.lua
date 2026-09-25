@@ -7,9 +7,9 @@ describe('sessions', function()
     exec_lua(function()
       _G.h = require('test.helpers')
       _G.before = h.handles()
-      _G.cc = require('claude-code')
+      _G.cc = require('bodging')
       cc.setup({ cmd = h.fake_cmd(), ccd_dir = h.root .. '/test/fixtures/ccd' })
-      _G.data = require('claude-code.harness.claude.sessions')
+      _G.data = require('bodging.harness.claude.sessions')
 
       local config = vim.env.CLAUDE_CONFIG_DIR
       vim.system({ 'cp', '-R', h.root .. '/test/fixtures/claude/projects', config }):wait()
@@ -114,7 +114,7 @@ describe('sessions', function()
       assert(vim.list_contains(ids({ archived = false }), 's-other'))
 
       local bufnr = cc.open()
-      require('claude-code.terminal').terminals[bufnr].session_id = 's-ccd'
+      require('bodging.terminal').terminals[bufnr].session_id = 's-ccd'
       for s in cc.sessions({ cwd = '/home/test/proj' }) do
         h.eq(s.id == 's-ccd' and bufnr or nil, s.bufnr, s.id)
       end
@@ -199,7 +199,7 @@ describe('sessions', function()
       }
       h.eq(expected, cc.touched('s-work'))
 
-      require('claude-code.harness.claude.hooks').sessions['s-work'] =
+      require('bodging.harness.claude.hooks').sessions['s-work'] =
         { touched = { '/home/test/proj/b.txt', '/x/new.txt' }, subtasks = {} }
       h.eq(vim.list_extend(vim.list_slice(expected), { '/x/new.txt' }), cc.touched('s-work'))
       h.eq({}, cc.touched('no-such-session'))
@@ -231,7 +231,7 @@ describe('sessions', function()
       live('s-work', vim.fn.getpid())
       h.eq({ 'bash2', 'agent3' }, open_ids())
 
-      require('claude-code.harness.claude.hooks').sessions['s-work'] = {
+      require('bodging.harness.claude.hooks').sessions['s-work'] = {
         touched = {},
         subtasks = {
           bash2 = { id = 'bash2', kind = 'bash', open = false },

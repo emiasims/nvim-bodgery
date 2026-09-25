@@ -47,8 +47,8 @@ for p = 1, PROJECTS do
   end
 end
 
-require('claude-code').setup({ ccd_dir = ccd })
-local sessions = require('claude-code.harness.claude.sessions')
+require('bodging').setup({ ccd_dir = ccd })
+local sessions = require('bodging.harness.claude.sessions')
 
 local function time(filter)
   local start = vim.uv.hrtime()

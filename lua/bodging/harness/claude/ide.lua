@@ -1,4 +1,4 @@
-local diagnostics = require('claude-code.diagnostics')
+local diagnostics = require('bodging.diagnostics')
 
 local M = {}
 
@@ -59,7 +59,7 @@ end
 
 --- Open IDE websocket connections. Selections go to all of them, since the shared lockfile
 --- token can't tell which terminal a connection belongs to.
---- @type table<claude-code.ws.Conn, true>
+--- @type table<bodging.ws.Conn, true>
 M.clients = {}
 
 --- @param method string
@@ -171,7 +171,7 @@ end
 --- Sends the current visual selection, or the last one in this buffer.
 function M.send_selection()
   if not is_file(0) then
-    error('claude-code: the current buffer is not a file', 0)
+    error('bodging: the current buffer is not a file', 0)
   end
   notify('selection_changed', visual() or cursor())
 end
@@ -180,7 +180,7 @@ end
 --- @param range? integer[] first and last line, 1-based
 function M.send_at_mention(range)
   if not is_file(0) then
-    error('claude-code: the current buffer is not a file', 0)
+    error('bodging: the current buffer is not a file', 0)
   end
   notify('at_mentioned', {
     filePath = vim.api.nvim_buf_get_name(0),
@@ -194,7 +194,7 @@ end
 function M.attach(group)
   local function auto(fn)
     return function()
-      local cc = require('claude-code')
+      local cc = require('bodging')
       if next(M.clients) and cc.configs[cc.default].selection.auto then
         fn()
       end
@@ -215,7 +215,7 @@ function M.attach(group)
 end
 
 --- Tools served on the IDE websocket.
---- @return claude-code.mcp.Tool[]
+--- @return bodging.mcp.Tool[]
 function M.tools()
   local tools = {
     {
@@ -242,9 +242,9 @@ function M.tools()
       },
       handler = function(args)
         return function(resolve)
-          local d = require('claude-code.harness.claude.diff').open(args, resolve)
+          local d = require('bodging.harness.claude.diff').open(args, resolve)
           return function()
-            require('claude-code.harness.claude.diff').cancel(d)
+            require('bodging.harness.claude.diff').cancel(d)
           end
         end
       end,
@@ -258,7 +258,7 @@ function M.tools()
         required = { 'tab_name' },
       },
       handler = function(args)
-        require('claude-code.harness.claude.diff').close(args.tab_name)
+        require('bodging.harness.claude.diff').close(args.tab_name)
         return 'TAB_CLOSED'
       end,
     },
@@ -266,11 +266,11 @@ function M.tools()
       name = 'closeAllDiffTabs',
       description = 'Close every diff opened by openDiff',
       handler = function()
-        return ('CLOSED_%d_DIFF_TABS'):format(require('claude-code.harness.claude.diff').close_all())
+        return ('CLOSED_%d_DIFF_TABS'):format(require('bodging.harness.claude.diff').close_all())
       end,
     },
   }
-  local cc = require('claude-code')
+  local cc = require('bodging')
   if cc.configs[cc.default].execute_code then
     tools[#tools + 1] = {
       name = 'executeCode',

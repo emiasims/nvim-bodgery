@@ -1,6 +1,6 @@
 # Design decisions
 
-Settled design for `claude-code.nvim`. Protocol facts come from reading the Claude Code 2.1.281 binary, and they can change between releases.
+Settled design for `bodging.nvim`. Protocol facts come from reading the Claude Code 2.1.281 binary, and they can change between releases.
 
 ## Principles
 
@@ -16,7 +16,7 @@ The plugin provides functions, events, and MCP tools, plus a Claude terminal tha
 
 The launch adds:
 
-- `--mcp-config` pointing at the plugin's MCP endpoint, then `--settings` registering the hooks, both as files under `stdpath('run')`. `--mcp-config` takes several values, so `--settings` follows it to end the list before the terminal's own arguments. MCP config headers expand `${CLAUDE_NVIM_TOKEN}`, checked against 2.1.281, so one config file serves every terminal.
+- `--mcp-config` pointing at the plugin's MCP endpoint, then `--settings` registering the hooks, both as files under `stdpath('run')`. `--mcp-config` takes several values, so `--settings` follows it to end the list before the terminal's own arguments. MCP config headers expand `${BODGING_TOKEN}`, checked against 2.1.281, so one config file serves every terminal.
 - `CLAUDE_CODE_SSE_PORT`, the auth token, and `EDITOR` in the terminal's environment
 - `FORCE_CODE_TERMINAL=true`, which Claude checks when deciding whether the terminal supports IDE integration
 - `127.0.0.1` and `localhost` appended to `no_proxy` and `NO_PROXY`, since Claude sends requests through `http_proxy` when one is set
@@ -25,7 +25,7 @@ Sessions started this way are the only ones with hooks and custom tools. The plu
 
 ## Transport
 
-One localhost HTTP server per Neovim, on `vim.uv`, carries three things: HTTP hooks (`{"type": "http", "url": ..., "headers": {...}}`), the MCP server for custom tools, and the `--ide` websocket. Each terminal gets its own random token in `CLAUDE_NVIM_TOKEN`. Hooks send it as `Authorization: Bearer $CLAUDE_NVIM_TOKEN` (hook header values expand only the environment variables named in the hook's `allowedEnvVars`), and the MCP config sends it the same way, so every hook and tool call maps to its terminal. The websocket authenticates with the lockfile's `authToken` in `X-Claude-Code-Ide-Authorization`. Claude reads that token from the lockfile for the port, so it is shared by every terminal in one Neovim.
+One localhost HTTP server per Neovim, on `vim.uv`, carries three things: HTTP hooks (`{"type": "http", "url": ..., "headers": {...}}`), the MCP server for custom tools, and the `--ide` websocket. Each terminal gets its own random token in `BODGING_TOKEN`. Hooks send it as `Authorization: Bearer $BODGING_TOKEN` (hook header values expand only the environment variables named in the hook's `allowedEnvVars`), and the MCP config sends it the same way, so every hook and tool call maps to its terminal. The websocket authenticates with the lockfile's `authToken` in `X-Claude-Code-Ide-Authorization`. Claude reads that token from the lockfile for the port, so it is shared by every terminal in one Neovim.
 
 Claude posts each hook with a `Content-Length` body and sends every hook from one session over a single kept-alive connection (axios, `Connection: keep-alive`), observed with 2.1.281 and a raw-logging server.
 
@@ -105,7 +105,7 @@ Without `bufnr`, the target is the active terminal: the one Claude terminal show
 
 ## Session restore
 
-Neovim restores a terminal by re-running its command, which would start a new conversation. On `SessionWritePost` the plugin saves a map from each Claude terminal's buffer name (`term://<cwd>//<pid>:<cmd>`) to its `session_id` and `cwd` in `stdpath('state')/claude-code/terminals.json`, merged with entries from other Neovims. `opts.restore.max_age` purges entries not written for that long.
+Neovim restores a terminal by re-running its command, which would start a new conversation. On `SessionWritePost` the plugin saves a map from each Claude terminal's buffer name (`term://<cwd>//<pid>:<cmd>`) to its `session_id` and `cwd` in `stdpath('state')/bodging/terminals.json`, merged with entries from other Neovims. `opts.restore.max_age` purges entries not written for that long.
 
 A session file restores a terminal with `badd <name>`, then `edit <name>`, which fires `BufReadCmd`, then `silent file <name>`, which renames the new terminal back to the saved name. Neovim's own `BufReadCmd` for `term://*` is defined first, so it runs first, but it skips buffers that have `b:term_title`. The plugin sets that variable on `BufNew` for names in the state file (`badd` fires `BufNew` before any read), and its own `BufReadCmd` then launches Claude in the buffer with `--resume <id>`. The rename keeps the key stable across restores. When a live Claude process or another plugin terminal already holds the session, the terminal starts a new conversation and says so with a notification. The session file must be sourced after `setup()`, or Neovim relaunches the stale command.
 

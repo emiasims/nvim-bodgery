@@ -7,7 +7,7 @@ describe('ide tools', function()
     exec_lua(function()
       _G.h = require('test.helpers')
       _G.before = h.handles()
-      _G.cc = require('claude-code')
+      _G.cc = require('bodging')
       cc.setup({
         cmd = h.fake_cmd(),
         tools = {
@@ -175,7 +175,7 @@ describe('ide tools', function()
       c:close()
       h.eq({ 'getDiagnostics', 'openDiff', 'close_tab', 'closeAllDiffTabs' }, ws_names)
 
-      local token = require('claude-code.terminal').terminals[cc.open()].token
+      local token = require('bodging.terminal').terminals[cc.open()].token
       local function post(body, sid)
         return h.request(cc.server.port, 'POST', '/mcp', {
           token = token,
