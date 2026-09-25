@@ -46,6 +46,20 @@ describe('setup', function()
     end
   end)
 
+  it('leaves one listening server after a second call', function()
+    local n = exec_lua(function()
+      local cc = require('claude-code')
+      cc.setup()
+      cc.setup()
+      local n = 0
+      for _, kind in pairs(require('test.helpers').handles()) do
+        n = n + (kind == 'tcp' and 1 or 0)
+      end
+      return n
+    end)
+    eq(1, n)
+  end)
+
   it('replaces the configuration on a second call', function()
     local config = exec_lua(function()
       local cc = require('claude-code')

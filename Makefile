@@ -12,7 +12,7 @@ nvim-test:
 test: nvim-test
 	NVIM_TEST_VERSION=$(NVIM_TEST_VERSION) \
 	nvim-test/bin/nvim-test test \
-		--lpath="$(CURDIR)/lua/?.lua;$(CURDIR)/lua/?/init.lua" \
+		--lpath="$(CURDIR)/lua/?.lua;$(CURDIR)/lua/?/init.lua;$(CURDIR)/?.lua" \
 		--verbose \
 		--filter="$(FILTER)"
 

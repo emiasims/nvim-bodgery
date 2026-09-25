@@ -26,7 +26,9 @@ Sessions started this way are the only ones with hooks and custom tools. The plu
 
 ## Transport
 
-One localhost HTTP server per Neovim, on `vim.uv`, carries three things: HTTP hooks (`{"type": "http", "url": ..., "headers": {...}}`), the MCP server for custom tools, and the `--ide` websocket. Each terminal gets its own random token in `CLAUDE_NVIM_TOKEN`. Hooks send it as `Authorization: Bearer $CLAUDE_NVIM_TOKEN` (hook header values expand environment variables), and the MCP config sends it the same way, so every hook and tool call maps to its terminal. The websocket authenticates with the lockfile's `authToken` in `X-Claude-Code-Ide-Authorization`. Claude reads that token from the lockfile for the port, so it is shared by every terminal in one Neovim.
+One localhost HTTP server per Neovim, on `vim.uv`, carries three things: HTTP hooks (`{"type": "http", "url": ..., "headers": {...}}`), the MCP server for custom tools, and the `--ide` websocket. Each terminal gets its own random token in `CLAUDE_NVIM_TOKEN`. Hooks send it as `Authorization: Bearer $CLAUDE_NVIM_TOKEN` (hook header values expand only the environment variables named in the hook's `allowedEnvVars`), and the MCP config sends it the same way, so every hook and tool call maps to its terminal. The websocket authenticates with the lockfile's `authToken` in `X-Claude-Code-Ide-Authorization`. Claude reads that token from the lockfile for the port, so it is shared by every terminal in one Neovim.
+
+Claude posts each hook with a `Content-Length` body and sends every hook from one session over a single kept-alive connection (axios, `Connection: keep-alive`), observed with 2.1.281 and a raw-logging server.
 
 Custom tools need their own MCP server because Claude hides every `mcp__ide__*` tool from the model except `executeCode` and `getDiagnostics`.
 
@@ -34,7 +36,7 @@ Custom tools need their own MCP server because Claude hides every `mcp__ide__*` 
 
 The plugin registers:
 
-- `SessionStart` to bind a `session_id` to its terminal. It fires again after `/resume` and `/clear`, which is how the plugin tracks a terminal changing sessions.
+- `SessionStart` to bind a `session_id` to its terminal. It fires again after `/resume` and `/clear`, which is how the plugin tracks a terminal changing sessions. Claude skips HTTP hooks for `SessionStart`, so this one is a command hook that pipes its input to the same endpoint with `curl`.
 - `PreToolUse` and `PostToolUse` on Read, Edit, Write, and NotebookEdit for touched files, and on Bash for background tasks
 - `SubagentStart` and `SubagentStop`
 - `UserPromptSubmit`, `Stop`, and `Notification` for status
@@ -117,7 +119,8 @@ The Claude Code binary is at `/opt/homebrew/Caskroom/claude-code@latest/<version
 - `opened_file_in_ide` and `selected_lines_in_ide` for how the selection is attached to a prompt
 - `beforeFileEdited` for the pre-edit `getDiagnostics` call
 - `X-Claude-Code-Ide-Authorization` and `workspaceFolders` (lockfile parsing) for the websocket connection
-- `type:R("http")` for the HTTP hook schema
+- `type:R("http")` for the HTTP hook schema, including `allowedEnvVars`
+- `HTTP hooks are not supported for` for the events that skip HTTP hooks (`SessionStart`, `Setup`)
 - `FORCE_CODE_TERMINAL` and `CLAUDE_CODE_SSE_PORT`
 - `externalEditorContext` for the `<C-g>` response context
 
