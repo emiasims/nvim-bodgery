@@ -152,6 +152,7 @@ function M.setup(opts)
     mcp.http_route(mcp.new({ name = 'nvim', tools = require('claude-code.tools').list }), '/mcp')
   )
   M.harness.start(M.server)
+  require('claude-code.restore').attach(group)
 end
 
 return M

@@ -103,7 +103,9 @@ Without `bufnr`, the target is the active terminal: the one Claude terminal show
 
 ## Session restore
 
-Neovim restores a terminal by re-running its command, which would start a new conversation. On `SessionWritePost` the plugin saves a map from each Claude terminal's buffer name to its `session_id` in `stdpath('state')/claude-code/terminals.json`. Buffer names carry the PID (`term://<cwd>//<pid>:<cmd>`), and a restored terminal gets a new one, but the session file still holds the old name. A `BufReadCmd` on Claude terminal names looks up the old name, relaunches, sends `/resume <id>`, and re-keys the entry to the new name. `opts.restore.max_age` purges stale entries.
+Neovim restores a terminal by re-running its command, which would start a new conversation. On `SessionWritePost` the plugin saves a map from each Claude terminal's buffer name (`term://<cwd>//<pid>:<cmd>`) to its `session_id` and `cwd` in `stdpath('state')/claude-code/terminals.json`, merged with entries from other Neovims. `opts.restore.max_age` purges entries not written for that long.
+
+A session file restores a terminal with `badd <name>`, then `edit <name>`, which fires `BufReadCmd`, then `silent file <name>`, which renames the new terminal back to the saved name. Neovim's own `BufReadCmd` for `term://*` is defined first, so it runs first, but it skips buffers that have `b:term_title`. The plugin sets that variable on `BufNew` for names in the state file (`badd` fires `BufNew` before any read), and its own `BufReadCmd` then launches Claude in the buffer with `--resume <id>`. The rename keeps the key stable across restores. When a live Claude process or another plugin terminal already holds the session, the terminal starts a new conversation and says so with a notification. The session file must be sourced after `setup()`, or Neovim relaunches the stale command.
 
 The key cannot use `v:this_session`: session managers that `mksession` to a temp file (this config's `lua/session.lua`) make it point at the temp path during `SessionWritePost`.
 

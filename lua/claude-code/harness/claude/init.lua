@@ -13,6 +13,7 @@ M.on_hook = hooks.on_hook
 M.send_selection = ide.send_selection
 M.send_at_mention = ide.send_at_mention
 M.sessions = sessions.sessions
+M.live = sessions.live
 
 --- @param id string
 --- @return { keys: string, args: string[] }

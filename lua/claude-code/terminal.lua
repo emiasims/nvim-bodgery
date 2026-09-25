@@ -4,6 +4,7 @@ local M = {}
 --- @field bufnr integer
 --- @field token string
 --- @field job integer
+--- @field cwd string
 --- @field session_id? string
 --- @field status? 'busy'|'idle'|'waiting'
 
@@ -32,6 +33,8 @@ end
 --- @field cwd? string
 --- @field args? string[] appended to `opts.cmd`
 --- @field mods? vim.api.keyset.cmd_mods open in a split built by `:new` with these modifiers
+--- @field buf? boolean start in the current buffer, which must be empty, as a restored
+---   session's terminal is
 
 --- Starts Claude in a terminal. Without `mods` it takes the current window, as `:terminal`
 --- does.
@@ -47,16 +50,17 @@ function M.open(opts)
 
   if opts.mods then
     vim.api.nvim_cmd({ cmd = 'new', mods = opts.mods }, {})
-  else
+  elseif not opts.buf then
     vim.api.nvim_win_set_buf(0, vim.api.nvim_create_buf(true, false))
   end
   local bufnr = vim.api.nvim_get_current_buf()
-  local job = vim.fn.jobstart(launch.cmd, { term = true, cwd = opts.cwd, env = launch.env })
+  local cwd = opts.cwd or vim.fn.getcwd()
+  local job = vim.fn.jobstart(launch.cmd, { term = true, cwd = cwd, env = launch.env })
   if job <= 0 then
     error(('claude-code: failed to start %s'):format(launch.cmd[1]))
   end
 
-  local term = { bufnr = bufnr, token = token, job = job }
+  local term = { bufnr = bufnr, token = token, job = job, cwd = cwd }
   M.terminals[bufnr] = term
   by_token[token] = term
   vim.api.nvim_create_autocmd('BufWipeout', {

@@ -7,18 +7,28 @@ local TIMEOUT = 2000
 M.root = vim.fs.dirname(vim.fs.dirname(vim.fs.abspath(debug.getinfo(1, 'S').source:sub(2))))
 
 --- Starts a fresh child Neovim that can require the plugin and these helpers, with Claude's
---- config directory and fake-claude's record directory in temporary locations.
-function M.clear()
+--- config directory, fake-claude's record directory, and `stdpath('state')` under `tmp`.
+--- Passing the `tmp` an earlier call returned gives the new child the same directories.
+--- @param tmp? string
+--- @return string tmp
+function M.clear(tmp)
   local t = require('nvim-test.helpers')
+  if not tmp then
+    local file = os.tmpname()
+    os.remove(file)
+    tmp = file .. '.d'
+  end
+  -- the child inherits the runner's environment, and reads it for stdpath() at startup
+  vim.uv.os_setenv('XDG_STATE_HOME', tmp .. '/state')
   t.clear()
-  t.exec_lua(function(path)
+  t.exec_lua(function(path, dir)
     package.path = path
-    local tmp = vim.fn.tempname()
-    vim.env.CLAUDE_CONFIG_DIR = tmp .. '/claude'
-    vim.env.FAKE_CLAUDE_RECORD = tmp .. '/record'
+    vim.env.CLAUDE_CONFIG_DIR = dir .. '/claude'
+    vim.env.FAKE_CLAUDE_RECORD = dir .. '/record'
     vim.fn.mkdir(vim.env.CLAUDE_CONFIG_DIR, 'p')
     vim.fn.mkdir(vim.env.FAKE_CLAUDE_RECORD, 'p')
-  end, package.path)
+  end, package.path, tmp)
+  return tmp
 end
 
 --- `opts.cmd` running fake-claude with `flags`.

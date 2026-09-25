@@ -38,7 +38,14 @@ describe('setup', function()
       end
       return counts
     end)
-    eq({ VimLeavePre = 1, WinLeave = 1, ModeChanged = 1 }, counts)
+    eq({
+      VimLeavePre = 1,
+      WinLeave = 1,
+      ModeChanged = 1,
+      SessionWritePost = 1,
+      BufNew = 1,
+      BufReadCmd = 1,
+    }, counts)
   end)
 
   it('removes the previous lockfile on a second call', function()
