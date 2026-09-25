@@ -36,7 +36,7 @@ Custom tools need their own MCP server because Claude hides every `mcp__ide__*` 
 The plugin registers:
 
 - `SessionStart` to bind a `session_id` to its terminal. It fires again after `/resume` and `/clear`, which is how the plugin tracks a terminal changing sessions. Claude skips HTTP hooks for `SessionStart`, so this one is a command hook that pipes its input to the same endpoint with `curl`.
-- `PreToolUse` and `PostToolUse` on Read, Edit, Write, and NotebookEdit for touched files, and on Bash for background tasks
+- `PreToolUse` and `PostToolUse` on Read, Edit, Write, and NotebookEdit for touched files, and on Bash for background tasks. A background command's `PostToolUse` carries `tool_response.backgroundTaskId`, and `Stop` and `SubagentStop` list the tasks still running in `background_tasks`, so a task missing from that list has finished.
 - `SubagentStart` and `SubagentStop`
 - `UserPromptSubmit`, `Stop`, and `Notification` for status
 - `SessionEnd`
@@ -122,6 +122,8 @@ The Claude Code binary is at `/opt/homebrew/Caskroom/claude-code@latest/<version
 - `HTTP hooks are not supported for` for the events that skip HTTP hooks (`SessionStart`, `Setup`)
 - `FORCE_CODE_TERMINAL` and `CLAUDE_CODE_SSE_PORT`
 - `externalEditorContext` for the `<C-g>` response context
+
+Hook payloads in `test/fixtures/hooks/` were recorded from 2.1.281 by `test/capture-hooks.lua`. Rerun it after a Claude upgrade.
 
 Local data read directly:
 

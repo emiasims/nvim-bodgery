@@ -1,3 +1,4 @@
+local hooks = require('claude-code.harness.claude.hooks')
 local launch = require('claude-code.harness.claude.launch')
 local mcp = require('claude-code.server.mcp')
 local ws = require('claude-code.server.ws')
@@ -5,6 +6,8 @@ local ws = require('claude-code.server.ws')
 local M = {}
 
 M.capabilities = { ide = true, resume_in_place = true }
+
+M.on_hook = hooks.on_hook
 
 --- @class claude-code.claude.State
 --- @field port integer
@@ -45,6 +48,8 @@ function M.start(server)
       authToken = state.auth_token,
     })
   )
+
+  hooks.register(server)
 
   local ide = mcp.new({
     name = 'nvim-ide',

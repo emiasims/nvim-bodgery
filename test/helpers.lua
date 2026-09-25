@@ -52,6 +52,38 @@ function M.record(bufnr, cond)
   return rec
 end
 
+--- A recorded hook payload from test/fixtures/hooks/, with `overrides` applied.
+--- @param name string file name without `.json`
+--- @param overrides? table
+--- @return table
+function M.fixture(name, overrides)
+  local path = ('%s/test/fixtures/hooks/%s.json'):format(M.root, name)
+  local data = vim.json.decode(table.concat(vim.fn.readfile(path), '\n'))
+  return vim.tbl_extend('force', data, overrides or {})
+end
+
+--- Posts a hook payload the way Claude does.
+--- @param port integer
+--- @param token string
+--- @param payload table with `hook_event_name`
+--- @return test.Response
+function M.post_hook(port, token, payload)
+  return M.request(port, 'POST', '/hooks/' .. payload.hook_event_name, { token = token, body = payload })
+end
+
+--- Records every `User Claude*` event as `{ name, data }` in the returned list.
+--- @return { [1]: string, [2]: table }[]
+function M.record_events()
+  local fired = {}
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'Claude*',
+    callback = function(ev)
+      fired[#fired + 1] = { ev.match, ev.data }
+    end,
+  })
+  return fired
+end
+
 --- Every tab's `winlayout()` with each window's buffer.
 --- @return table
 function M.layout()
