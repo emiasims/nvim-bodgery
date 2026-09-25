@@ -1,0 +1,51 @@
+-- Stand-in for claude, run as `nvim --clean -l fake-claude [args]`.
+--
+-- Records its argv, environment, and every stdin line as JSON in
+-- `$FAKE_CLAUDE_RECORD/<CLAUDE_NVIM_TOKEN>.json`, rewritten after each change.
+local uv = vim.uv
+
+local record = {
+  argv = _G.arg and { unpack(_G.arg) } or {},
+  env = vim.fn.environ(),
+  cwd = uv.cwd(),
+  stdin = {},
+}
+
+local dir = assert(os.getenv('FAKE_CLAUDE_RECORD'), 'FAKE_CLAUDE_RECORD is not set')
+local path = ('%s/%s.json'):format(dir, os.getenv('CLAUDE_NVIM_TOKEN') or 'none')
+
+local function save()
+  local tmp = path .. '.tmp'
+  local f = assert(io.open(tmp, 'w'))
+  f:write(vim.json.encode(record))
+  f:close()
+  assert(uv.fs_rename(tmp, path))
+end
+save()
+
+local done = false
+local tty = assert(uv.new_tty(0, true))
+local partial = ''
+tty:read_start(function(err, data)
+  if err or not data then
+    done = true
+    return
+  end
+  partial = partial .. data
+  while true do
+    local nl = partial:find('[\r\n]')
+    if not nl then
+      break
+    end
+    record.stdin[#record.stdin + 1] = partial:sub(1, nl - 1)
+    partial = partial:sub(nl + 1)
+    save()
+  end
+end)
+
+io.stdout:write('fake-claude ready\n')
+while not done do
+  vim.wait(1000, function()
+    return done
+  end)
+end

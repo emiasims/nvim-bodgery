@@ -294,6 +294,12 @@ function Server:accept(client)
   end)
 end
 
+--- Adds a route. Routes added later win over earlier ones for the same method and path.
+--- @param route claude-code.http.Route
+function Server:route(route)
+  table.insert(self.routes, 1, route)
+end
+
 function Server:stop()
   if not self.tcp:is_closing() then
     self.tcp:close()
@@ -304,7 +310,7 @@ function Server:stop()
 end
 
 --- @class claude-code.http.Opts
---- @field routes claude-code.http.Route[]
+--- @field routes? claude-code.http.Route[]
 --- @field auth fun(token: string): any returns a context for a known token, nil otherwise
 --- @field max_body? integer bytes, default 16 MiB
 
@@ -316,7 +322,7 @@ function M.start(opts)
   local self = setmetatable({
     tcp = tcp,
     conns = {},
-    routes = opts.routes,
+    routes = vim.list_extend({}, opts.routes or {}),
     auth = opts.auth,
     max_body = opts.max_body or 16 * 1024 * 1024,
   }, Server)

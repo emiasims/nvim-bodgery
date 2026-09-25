@@ -6,15 +6,22 @@ M.config = nil
 --- @type claude-code.http.Server?
 M.server = nil
 
---- @type claude-code.http.Route[]
-M.routes = {}
+M.harness = require('claude-code.harness.claude')
 
 --- Stops the server and removes the lockfile. `setup()` starts them again.
 function M.stop()
+  M.harness.stop()
   if M.server then
     M.server:stop()
     M.server = nil
   end
+end
+
+--- Starts Claude in a terminal and returns its buffer.
+--- @param opts? claude-code.OpenOpts
+--- @return integer bufnr
+function M.open(opts)
+  return require('claude-code.terminal').open(opts)
 end
 
 --- Configures the plugin and starts the server. Calling it again replaces the previous
@@ -29,10 +36,23 @@ function M.setup(opts)
   local group = vim.api.nvim_create_augroup('claude-code', { clear = true })
   vim.api.nvim_create_autocmd('VimLeavePre', { group = group, callback = M.stop })
 
-  M.server = require('claude-code.server.http').start({
-    routes = M.routes,
-    auth = function() end,
-  })
+  vim.api.nvim_create_user_command('Claude', function(ev)
+    M.open({ args = ev.fargs, mods = ev.smods })
+  end, { nargs = '*', desc = 'Start Claude in a split' })
+
+  local mcp = require('claude-code.server.mcp')
+  local terminal = require('claude-code.terminal')
+  M.server = require('claude-code.server.http').start({ auth = terminal.lookup })
+  M.server:route(mcp.http_route(
+    mcp.new({
+      name = 'nvim',
+      tools = function()
+        return {}
+      end,
+    }),
+    '/mcp'
+  ))
+  M.harness.start(M.server)
 end
 
 return M

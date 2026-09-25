@@ -4,11 +4,92 @@ local M = {}
 
 local TIMEOUT = 2000
 
---- Starts a fresh child Neovim that can require the plugin and these helpers.
+M.root = vim.fs.dirname(vim.fs.dirname(vim.fs.abspath(debug.getinfo(1, 'S').source:sub(2))))
+
+--- Starts a fresh child Neovim that can require the plugin and these helpers, with Claude's
+--- config directory and fake-claude's record directory in temporary locations.
 function M.clear()
   local t = require('nvim-test.helpers')
   t.clear()
-  t.exec_lua('package.path = ...', package.path)
+  t.exec_lua(function(path)
+    package.path = path
+    local tmp = vim.fn.tempname()
+    vim.env.CLAUDE_CONFIG_DIR = tmp .. '/claude'
+    vim.env.FAKE_CLAUDE_RECORD = tmp .. '/record'
+    vim.fn.mkdir(vim.env.CLAUDE_CONFIG_DIR, 'p')
+    vim.fn.mkdir(vim.env.FAKE_CLAUDE_RECORD, 'p')
+  end, package.path)
+end
+
+--- `opts.cmd` running fake-claude with `flags`.
+--- @param flags? string[]
+--- @return string[]
+function M.fake_cmd(flags)
+  return vim.list_extend(
+    { vim.v.progpath, '--clean', '-l', M.root .. '/test/bin/fake-claude' },
+    flags or {}
+  )
+end
+
+--- Waits for fake-claude in terminal `bufnr` to write a record that satisfies `cond`.
+--- @param bufnr integer
+--- @param cond? fun(record: table): any
+--- @return { argv: string[], env: table<string, string>, cwd: string, stdin: string[] }
+function M.record(bufnr, cond)
+  local term = require('claude-code.terminal').terminals[bufnr]
+  local path = ('%s/%s.json'):format(vim.env.FAKE_CLAUDE_RECORD, term.token)
+  local rec
+  M.wait(function()
+    local f = io.open(path)
+    if not f then
+      return false
+    end
+    local ok, data = pcall(vim.json.decode, f:read('*a'))
+    f:close()
+    rec = ok and data or nil
+    return rec and (not cond or cond(rec))
+  end, 'fake-claude record for buffer ' .. bufnr)
+  return rec
+end
+
+--- Every tab's `winlayout()` with each window's buffer.
+--- @return table
+function M.layout()
+  local function walk(node)
+    if node[1] == 'leaf' then
+      return { 'leaf', node[2], vim.api.nvim_win_get_buf(node[2]) }
+    end
+    return { node[1], vim.tbl_map(walk, node[2]) }
+  end
+  local out = {}
+  for i = 1, vim.fn.tabpagenr('$') do
+    out[i] = walk(vim.fn.winlayout(i))
+  end
+  return out
+end
+
+--- The window structure of every tab, with sizes and the current window marked, ignoring
+--- window ids and buffers.
+--- @return table
+function M.shape()
+  local cur = vim.api.nvim_get_current_win()
+  local function walk(node)
+    if node[1] == 'leaf' then
+      local w = node[2]
+      return {
+        'leaf',
+        vim.api.nvim_win_get_width(w),
+        vim.api.nvim_win_get_height(w),
+        w == cur,
+      }
+    end
+    return { node[1], vim.tbl_map(walk, node[2]) }
+  end
+  local out = { tab = vim.fn.tabpagenr() }
+  for i = 1, vim.fn.tabpagenr('$') do
+    out[i] = walk(vim.fn.winlayout(i))
+  end
+  return out
 end
 
 --- @param expected any

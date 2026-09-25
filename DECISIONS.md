@@ -16,8 +16,7 @@ The plugin provides functions, events, and MCP tools, plus a Claude terminal tha
 
 The launch adds:
 
-- `--settings` with inline JSON registering the HTTP hooks
-- `--mcp-config` pointing at the plugin's MCP endpoint
+- `--mcp-config` pointing at the plugin's MCP endpoint, then `--settings` registering the hooks, both as files under `stdpath('run')`. `--mcp-config` takes several values, so `--settings` follows it to end the list before the terminal's own arguments. MCP config headers expand `${CLAUDE_NVIM_TOKEN}`, checked against 2.1.281, so one config file serves every terminal.
 - `CLAUDE_CODE_SSE_PORT`, the auth token, and `EDITOR` in the terminal's environment
 - `FORCE_CODE_TERMINAL=true`, which Claude checks when deciding whether the terminal supports IDE integration
 - `127.0.0.1` and `localhost` appended to `no_proxy` and `NO_PROXY`, since Claude sends requests through `http_proxy` when one is set
