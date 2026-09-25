@@ -51,12 +51,7 @@ function M.start(server)
 
   hooks.register(server)
 
-  local ide = mcp.new({
-    name = 'nvim-ide',
-    tools = function()
-      return {}
-    end,
-  })
+  local ide = mcp.new({ name = 'nvim-ide', tools = require('claude-code.harness.claude.ide').tools })
   server:route(ws.route(vim.tbl_extend('force', mcp.ws_handlers(ide), {
     path = '/',
     token = function()

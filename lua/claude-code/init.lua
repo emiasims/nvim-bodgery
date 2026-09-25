@@ -24,6 +24,13 @@ function M.open(opts)
   return require('claude-code.terminal').open(opts)
 end
 
+--- Registers or replaces a custom MCP tool, shown to Claude as `mcp__nvim__<name>`.
+--- @param name string
+--- @param spec claude-code.ToolSpec
+function M.tool(name, spec)
+  require('claude-code.tools').register(name, spec)
+end
+
 --- Files Claude read or edited in a session.
 --- @param session_id string
 --- @return string[]
@@ -59,15 +66,9 @@ function M.setup(opts)
   local mcp = require('claude-code.server.mcp')
   local terminal = require('claude-code.terminal')
   M.server = require('claude-code.server.http').start({ auth = terminal.lookup })
-  M.server:route(mcp.http_route(
-    mcp.new({
-      name = 'nvim',
-      tools = function()
-        return {}
-      end,
-    }),
-    '/mcp'
-  ))
+  M.server:route(
+    mcp.http_route(mcp.new({ name = 'nvim', tools = require('claude-code.tools').list }), '/mcp')
+  )
   M.harness.start(M.server)
 end
 
