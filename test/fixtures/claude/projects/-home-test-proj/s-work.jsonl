@@ -14,7 +14,7 @@
 {"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t6","content":"ok"}]},"toolUseResult":{"stdout":"","backgroundTaskId":"bash1"},"cwd":"/home/test/proj","sessionId":"s-work"}
 {"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t7","name":"Bash","input":{"command":"tail -f log","run_in_background":true}}]},"cwd":"/home/test/proj","sessionId":"s-work"}
 {"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t7","content":"ok"}]},"toolUseResult":{"stdout":"","backgroundTaskId":"bash2"},"cwd":"/home/test/proj","sessionId":"s-work"}
-{"type":"user","message":{"role":"user","content":"<task-notification>\n<task-id>bash1</task-id>\n<status>completed</status>\n</task-notification>"},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":"<task-notification>\n<task-id>bash1</task-id>\n<output-file>/tmp/bash1.output</output-file>\n<status>completed</status>\n</task-notification>"},"cwd":"/home/test/proj","sessionId":"s-work"}
 {"type":"user","message":{"role":"user","content":"<task-notification>\n<task-id>agent1</task-id>\n<status>completed</status>\n</task-notification>"},"cwd":"/home/test/proj","sessionId":"s-work"}
 {"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t9","name":"NotebookEdit","input":{"notebook_path":"/home/test/proj/n.ipynb","new_source":"print(2)"}}]},"cwd":"/home/test/proj","sessionId":"s-work"}
 {"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t9","content":"ok"}]},"cwd":"/home/test/proj","sessionId":"s-work"}

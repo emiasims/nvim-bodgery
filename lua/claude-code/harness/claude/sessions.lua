@@ -418,8 +418,11 @@ function M.subtasks(id)
     end
     local text = rec.type == 'user' and type(rec.message) == 'table' and rec.message.content
     if type(text) == 'string' then
-      for task_id in text:gmatch('<task%-notification>%s*<task%-id>([^<]+)</task%-id>') do
-        notified[task_id] = true
+      for note in text:gmatch('<task%-notification>(.-)</task%-notification>') do
+        local task_id = note:match('<task%-id>([^<]+)</task%-id>')
+        if task_id then
+          notified[task_id] = note:match('<output%-file>([^<]+)</output%-file>') or true
+        end
       end
     end
   end
@@ -443,6 +446,7 @@ function M.subtasks(id)
       id = a.id,
       kind = 'agent',
       description = a.meta.description or a.meta.agentType,
+      path = vim.fs.joinpath(dir, ('agent-%s.jsonl'):format(a.id)),
       -- a foreground agent's tool result is its final answer
       done = a.meta.requestShape ~= 'background' and results[a.meta.toolUseId],
     })
@@ -452,11 +456,13 @@ function M.subtasks(id)
   local out = {}
   for _, key in ipairs(order) do
     local s = by_id[key]
+    local note = notified[s.id]
     out[#out + 1] = {
       id = s.id,
       kind = s.kind,
       description = s.description,
-      open = live and not notified[s.id] and not s.done,
+      open = live and not note and not s.done,
+      path = s.path or (type(note) == 'string' and note or nil),
     }
   end
   return out

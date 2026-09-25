@@ -10,6 +10,7 @@ local FILE_TOOLS =
 --- @field kind 'agent'|'bash'
 --- @field description? string
 --- @field open boolean
+--- @field path? string the agent's transcript, or a finished background command's output
 
 --- Live state from hooks, per session id.
 --- @type table<string, { touched: string[], subtasks: table<string, claude-code.Subtask> }>

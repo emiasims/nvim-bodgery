@@ -208,6 +208,9 @@ describe('sessions', function()
 
   it('opens subtasks only while the session is live and unfinished', function()
     exec_lua(function()
+      local function agent(id)
+        return ('%s/s-work/subagents/agent-%s.jsonl'):format(proj, id)
+      end
       local function open_ids()
         local out = {}
         for _, s in ipairs(cc.subtasks('s-work')) do
@@ -218,11 +221,11 @@ describe('sessions', function()
         return out
       end
       h.eq({
-        { id = 'bash1', kind = 'bash', description = 'Sleep', open = false },
+        { id = 'bash1', kind = 'bash', description = 'Sleep', open = false, path = '/tmp/bash1.output' },
         { id = 'bash2', kind = 'bash', description = 'tail -f log', open = false },
-        { id = 'agent1', kind = 'agent', description = 'Review', open = false },
-        { id = 'agent2', kind = 'agent', description = 'Search', open = false },
-        { id = 'agent3', kind = 'agent', description = 'Plan', open = false },
+        { id = 'agent1', kind = 'agent', description = 'Review', open = false, path = agent('agent1') },
+        { id = 'agent2', kind = 'agent', description = 'Search', open = false, path = agent('agent2') },
+        { id = 'agent3', kind = 'agent', description = 'Plan', open = false, path = agent('agent3') },
       }, cc.subtasks('s-work'))
 
       live('s-work', vim.fn.getpid())

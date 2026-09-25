@@ -69,6 +69,53 @@ function M.open(opts)
   return bufnr
 end
 
+--- Milliseconds between typed text and the Enter that submits it. Claude's input reads
+--- text and Enter arriving together as a paste, where Enter adds a newline.
+M.submit_delay = 100
+
+--- Types `text` into the terminal and submits it.
+--- @param term claude-code.Terminal
+--- @param text string
+function M.submit(term, text)
+  vim.fn.chansend(term.job, text)
+  vim.defer_fn(function()
+    if M.terminals[term.bufnr] == term then
+      vim.fn.chansend(term.job, '\r')
+    end
+  end, M.submit_delay)
+end
+
+--- The terminal a call without an explicit target acts on: `bufnr` when given, else the
+--- one Claude terminal shown in the current tab, else `opts.resolve()`.
+--- @param bufnr? integer
+--- @return claude-code.Terminal
+function M.active(bufnr)
+  if bufnr then
+    return M.terminals[bufnr] or error(('claude-code: buffer %d is not a Claude terminal'):format(bufnr), 0)
+  end
+  local shown = {}
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    local term = M.terminals[vim.api.nvim_win_get_buf(win)]
+    if term and not vim.list_contains(shown, term) then
+      shown[#shown + 1] = term
+    end
+  end
+  if #shown == 1 then
+    return shown[1]
+  end
+  local resolve = require('claude-code').config.resolve
+  local resolved = resolve and resolve()
+  if resolved and M.terminals[resolved] then
+    return M.terminals[resolved]
+  end
+  error(
+    ('claude-code: %s Claude terminals shown, pass a bufnr or set opts.resolve'):format(
+      #shown == 0 and 'no' or #shown
+    ),
+    0
+  )
+end
+
 --- A window in the current tab for showing a file beside Claude. With a Claude window in
 --- the tab, this is the only other window, the one nearest Claude in `winlayout()` when
 --- there are several, or a new vertical split when Claude is alone. Without one, it is the

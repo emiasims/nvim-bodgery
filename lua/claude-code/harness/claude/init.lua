@@ -14,6 +14,12 @@ M.send_selection = ide.send_selection
 M.send_at_mention = ide.send_at_mention
 M.sessions = sessions.sessions
 
+--- @param id string
+--- @return { keys: string, args: string[] }
+function M.resume(id)
+  return { keys = '/resume ' .. id, args = { '--resume', id } }
+end
+
 --- Files from the transcript, then files hooks reported that it doesn't hold yet.
 --- @param id string
 --- @return string[]

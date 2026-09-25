@@ -42,6 +42,71 @@ function M.send_at_mention(range)
   M.harness.send_at_mention(range)
 end
 
+--- @class claude-code.SwitchOpts
+--- @field new? boolean open a new terminal in the current window instead
+
+--- Resumes session `id`: in place by typing the resume command into the active terminal,
+--- or with `new` in a new terminal in the current window. A busy terminal is handled by
+--- `opts.on_busy`.
+--- @param bufnr? integer
+--- @param id string
+--- @param opts? claude-code.SwitchOpts
+--- @overload fun(id: string, opts?: claude-code.SwitchOpts)
+function M.switch(bufnr, id, opts)
+  if type(bufnr) == 'string' then
+    bufnr, id, opts = nil, bufnr, id --[[@as claude-code.SwitchOpts?]]
+  end
+  opts = opts or {}
+  local terminal = require('claude-code.terminal')
+  local resume = M.harness.resume(id)
+  if opts.new then
+    terminal.open({ args = resume.args })
+    return
+  end
+
+  local term = terminal.active(bufnr)
+  local actions = {
+    interrupt = function()
+      vim.fn.chansend(term.job, '\27')
+      vim.defer_fn(function()
+        terminal.submit(term, resume.keys)
+      end, terminal.submit_delay)
+    end,
+    queue = function()
+      vim.api.nvim_create_autocmd('User', {
+        group = vim.api.nvim_create_augroup('claude-code', { clear = false }),
+        pattern = 'ClaudeStatusChanged',
+        callback = function(ev)
+          if ev.data.bufnr == term.bufnr and ev.data.status == 'idle' then
+            terminal.submit(term, resume.keys)
+            return true
+          end
+        end,
+      })
+    end,
+  }
+
+  -- typing into a permission prompt would answer it, so waiting counts as busy
+  if term.status ~= 'busy' and term.status ~= 'waiting' then
+    terminal.submit(term, resume.keys)
+  elseif M.config.on_busy == 'error' then
+    error('claude-code: Claude is busy in buffer ' .. term.bufnr, 0)
+  elseif M.config.on_busy == 'prompt' then
+    vim.ui.select({ 'interrupt', 'queue' }, {
+      prompt = 'Claude is busy',
+      format_item = function(item)
+        return item == 'interrupt' and 'Interrupt and resume now' or 'Resume when idle'
+      end,
+    }, function(choice)
+      if choice then
+        actions[choice]()
+      end
+    end)
+  else
+    actions[M.config.on_busy]()
+  end
+end
+
 --- Sessions newest first. Breaking out of the loop early skips reading the rest.
 --- @param filter? claude-code.SessionFilter
 --- @return fun(): claude-code.Session?
