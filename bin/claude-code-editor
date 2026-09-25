@@ -1,0 +1,18 @@
+#!/bin/sh
+# EDITOR for Claude terminals started by claude-code.nvim. Opens the file in that Neovim
+# and exits once its buffer is hidden.
+for file; do :; done
+if [ -z "$file" ] || [ -z "$CLAUDE_CODE_SSE_PORT" ] || [ -z "$CLAUDE_NVIM_TOKEN" ]; then
+  echo "usage: CLAUDE_CODE_SSE_PORT=... CLAUDE_NVIM_TOKEN=... claude-code-editor FILE" >&2
+  exit 2
+fi
+case $file in
+  /*) ;;
+  *) file=$PWD/$file ;;
+esac
+escaped=$(printf '%s' "$file" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
+exec curl -sS --fail --noproxy '*' -o /dev/null -X POST \
+  -H "Authorization: Bearer $CLAUDE_NVIM_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data-binary "{\"file\":\"$escaped\"}" \
+  "http://127.0.0.1:$CLAUDE_CODE_SSE_PORT/editor"
