@@ -1,0 +1,4 @@
+{"type":"last-prompt","leafUuid":"x","sessionId":"s-agent"}
+{"type":"mode","mode":"normal","sessionId":"s-agent"}
+{"type":"user","message":{"role":"user","content":"agent prompt"},"cwd":"/home/test/proj","sessionId":"s-agent","uuid":"u"}
+{"type":"agent-name","agentName":"Agent name","sessionId":"s-agent"}

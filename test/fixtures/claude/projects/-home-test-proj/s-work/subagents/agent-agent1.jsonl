@@ -1,0 +1,1 @@
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"s1","name":"Read","input":{"file_path":"/home/test/proj/e.txt"}}]},"isSidechain":true,"sessionId":"s-work"}

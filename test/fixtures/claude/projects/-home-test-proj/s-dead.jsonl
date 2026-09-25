@@ -1,0 +1,3 @@
+{"type":"last-prompt","leafUuid":"x","sessionId":"s-dead"}
+{"type":"mode","mode":"normal","sessionId":"s-dead"}
+{"type":"user","message":{"role":"user","content":"dead prompt"},"cwd":"/home/test/proj","sessionId":"s-dead","uuid":"u"}

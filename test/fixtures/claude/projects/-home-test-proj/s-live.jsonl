@@ -1,0 +1,3 @@
+{"type":"last-prompt","leafUuid":"x","sessionId":"s-live"}
+{"type":"mode","mode":"normal","sessionId":"s-live"}
+{"type":"user","message":{"role":"user","content":"live prompt"},"cwd":"/home/test/proj","sessionId":"s-live","uuid":"u"}

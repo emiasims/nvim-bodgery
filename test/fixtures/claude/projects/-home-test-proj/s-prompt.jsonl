@@ -1,0 +1,5 @@
+{"type":"last-prompt","leafUuid":"x","sessionId":"s-prompt"}
+{"type":"mode","mode":"normal","sessionId":"s-prompt"}
+{"type":"user","isMeta":true,"message":{"role":"user","content":"<local-command-caveat>x</local-command-caveat>"},"cwd":"/home/test/proj","sessionId":"s-prompt"}
+{"type":"user","message":{"role":"user","content":"<command-name>/clear</command-name>"},"cwd":"/home/test/proj","sessionId":"s-prompt","uuid":"u"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"fix the parser\nthen the tests"}]},"cwd":"/home/test/proj","sessionId":"s-prompt","uuid":"u"}

@@ -1,0 +1,3 @@
+{"type":"user","message":
+not json at all
+{"type":"user","message":{"role":"user","content":"after garbage"},"cwd":"/home/test/proj","sessionId":"s-malformed","uuid":"u"}

@@ -18,6 +18,10 @@ test: nvim-test
 
 	-@stty sane
 
+.PHONY: bench
+bench:
+	nvim --clean -l test/bench.lua
+
 .PHONY: clean
 clean:
 	rm -rf nvim-test

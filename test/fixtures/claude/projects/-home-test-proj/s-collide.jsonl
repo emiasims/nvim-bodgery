@@ -1,0 +1,3 @@
+{"type":"last-prompt","leafUuid":"x","sessionId":"s-collide"}
+{"type":"mode","mode":"normal","sessionId":"s-collide"}
+{"type":"user","message":{"role":"user","content":"collide prompt"},"cwd":"/home/test.proj","sessionId":"s-collide","uuid":"u"}

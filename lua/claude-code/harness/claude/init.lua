@@ -2,6 +2,7 @@ local hooks = require('claude-code.harness.claude.hooks')
 local ide = require('claude-code.harness.claude.ide')
 local launch = require('claude-code.harness.claude.launch')
 local mcp = require('claude-code.server.mcp')
+local sessions = require('claude-code.harness.claude.sessions')
 local ws = require('claude-code.server.ws')
 
 local M = {}
@@ -11,6 +12,40 @@ M.capabilities = { ide = true, resume_in_place = true }
 M.on_hook = hooks.on_hook
 M.send_selection = ide.send_selection
 M.send_at_mention = ide.send_at_mention
+M.sessions = sessions.sessions
+
+--- Files from the transcript, then files hooks reported that it doesn't hold yet.
+--- @param id string
+--- @return string[]
+function M.touched(id)
+  local out = sessions.touched(id)
+  for _, path in ipairs((hooks.sessions[id] or {}).touched or {}) do
+    if not vim.list_contains(out, path) then
+      out[#out + 1] = path
+    end
+  end
+  return out
+end
+
+--- Subtasks from the transcript, with hooks deciding which are open.
+--- @param id string
+--- @return claude-code.Subtask[]
+function M.subtasks(id)
+  local out = sessions.subtasks(id)
+  local live = vim.deepcopy((hooks.sessions[id] or {}).subtasks or {})
+  for _, subtask in ipairs(out) do
+    local hooked = live[subtask.id]
+    if hooked then
+      subtask.open = hooked.open
+      live[subtask.id] = nil
+    end
+  end
+  local rest = vim.tbl_values(live)
+  table.sort(rest, function(a, b)
+    return a.id < b.id
+  end)
+  return vim.list_extend(out, rest)
+end
 
 --- @class claude-code.claude.State
 --- @field port integer

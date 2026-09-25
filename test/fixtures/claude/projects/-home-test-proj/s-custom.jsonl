@@ -1,0 +1,6 @@
+{"type":"last-prompt","leafUuid":"x","sessionId":"s-custom"}
+{"type":"mode","mode":"normal","sessionId":"s-custom"}
+{"type":"user","message":{"role":"user","content":"custom prompt"},"cwd":"/home/test/proj","sessionId":"s-custom","uuid":"u"}
+{"type":"ai-title","aiTitle":"AI name","sessionId":"s-custom"}
+{"type":"custom-title","customTitle":"Old name","sessionId":"s-custom"}
+{"type":"custom-title","customTitle":"Custom name","sessionId":"s-custom"}

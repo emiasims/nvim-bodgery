@@ -1,0 +1,20 @@
+{"type":"user","message":{"role":"user","content":"do the work"},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"reading"},{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"/home/test/proj/a.txt"}}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Edit","input":{"file_path":"/home/test/proj/a.txt","old_string":"x","new_string":"y"}},{"type":"tool_use","id":"t3","name":"Write","input":{"file_path":"/home/test/proj/b.txt","content":"new"}}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":"ok"}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t3","content":"ok"}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"file-history-snapshot","messageId":"m1","snapshot":{"messageId":"m1","trackedFileBackups":{"a.txt":{"backupFileName":"x@v1","version":1,"realParentDir":"/home/test/proj"},"/abs/c.txt":{"backupFileName":"y@v1","version":1}}},"isSnapshotUpdate":false}
+{"type":"file-history-delta","messageId":"m2","trackingPath":"d.txt","backup":{"backupFileName":null,"version":1,"realParentDir":"/home/test/proj"}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t4","name":"Agent","input":{"description":"Review","run_in_background":true}},{"type":"tool_use","id":"t5","name":"Agent","input":{"description":"Search"}},{"type":"tool_use","id":"t8","name":"Agent","input":{"description":"Plan","run_in_background":true}}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t4","content":"ok"}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t5","content":"ok"}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t8","content":"ok"}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t6","name":"Bash","input":{"command":"sleep 2","description":"Sleep","run_in_background":true}}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t6","content":"ok"}]},"toolUseResult":{"stdout":"","backgroundTaskId":"bash1"},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t7","name":"Bash","input":{"command":"tail -f log","run_in_background":true}}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t7","content":"ok"}]},"toolUseResult":{"stdout":"","backgroundTaskId":"bash2"},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":"<task-notification>\n<task-id>bash1</task-id>\n<status>completed</status>\n</task-notification>"},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":"<task-notification>\n<task-id>agent1</task-id>\n<status>completed</status>\n</task-notification>"},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t9","name":"NotebookEdit","input":{"notebook_path":"/home/test/proj/n.ipynb","new_source":"print(2)"}}]},"cwd":"/home/test/proj","sessionId":"s-work"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t9","content":"ok"}]},"cwd":"/home/test/proj","sessionId":"s-work"}

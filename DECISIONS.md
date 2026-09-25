@@ -89,7 +89,7 @@ Built in: `nvim_help(tag)` returns the section from a tag to the next tag, `nvim
 - ccd's index, `~/Library/Application Support/Claude/claude-code-sessions/<account>/<org>/local_<id>.json`, matched on `cliSessionId`, for `title` and `isArchived`
 - `~/.claude/sessions/<pid>.json` for live sessions (`status`, `name`, `messagingSocketPath`)
 
-Without a ccd title, `title` falls back to the session name or its first prompt.
+Without a ccd title, `title` falls back, in order, to the last `custom-title` record (from `/rename`), the last `agent-name` record, the live session's `name`, the last `ai-title` record, and the first line of the first prompt. Claude re-appends title records as a session goes on, so they are read from the last 64 KB of the transcript, and `cwd` and the first prompt from the start (up to 1 MB). A `fields` list in the filter skips the reads a caller doesn't need.
 
 `subtasks(session)` lists subagents (`<session>/subagents/agent-<id>.jsonl` with `.meta.json`) and background tasks (tool calls in the main transcript).
 

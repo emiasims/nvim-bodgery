@@ -1,0 +1,3 @@
+{"type":"last-prompt","leafUuid":"x","sessionId":"s-other"}
+{"type":"mode","mode":"normal","sessionId":"s-other"}
+{"type":"user","message":{"role":"user","content":"other prompt"},"cwd":"/home/test/other","sessionId":"s-other","uuid":"u"}

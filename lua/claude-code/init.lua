@@ -42,20 +42,25 @@ function M.send_at_mention(range)
   M.harness.send_at_mention(range)
 end
 
+--- Sessions newest first. Breaking out of the loop early skips reading the rest.
+--- @param filter? claude-code.SessionFilter
+--- @return fun(): claude-code.Session?
+function M.sessions(filter)
+  return M.harness.sessions(filter)
+end
+
 --- Files Claude read or edited in a session.
 --- @param session_id string
 --- @return string[]
 function M.touched(session_id)
-  local live = require('claude-code.harness.claude.hooks').sessions[session_id]
-  return live and vim.deepcopy(live.touched) or {}
+  return M.harness.touched(session_id)
 end
 
 --- Subagents and background tasks of a session.
 --- @param session_id string
 --- @return claude-code.Subtask[]
 function M.subtasks(session_id)
-  local live = require('claude-code.harness.claude.hooks').sessions[session_id]
-  return live and vim.tbl_values(vim.deepcopy(live.subtasks)) or {}
+  return M.harness.subtasks(session_id)
 end
 
 --- Configures the plugin and starts the server. Calling it again replaces the previous

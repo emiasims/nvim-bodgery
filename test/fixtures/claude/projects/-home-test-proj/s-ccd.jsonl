@@ -1,0 +1,3 @@
+{"type":"last-prompt","leafUuid":"x","sessionId":"s-ccd"}
+{"type":"mode","mode":"normal","sessionId":"s-ccd"}
+{"type":"user","message":{"role":"user","content":"ccd prompt"},"cwd":"/home/test/proj","sessionId":"s-ccd","uuid":"u"}
