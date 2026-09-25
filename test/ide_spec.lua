@@ -187,7 +187,7 @@ describe('ide tools', function()
       local mcp_names = vim.tbl_map(function(t)
         return t.name
       end, post({ jsonrpc = '2.0', id = 2, method = 'tools/list' }, sid).json.result.tools)
-      h.eq({ 'custom' }, mcp_names)
+      h.eq({ 'custom', 'nvim_help', 'nvim_help_search', 'nvim_helpgrep' }, mcp_names)
     end)
   end)
 end)

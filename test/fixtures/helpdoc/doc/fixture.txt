@@ -1,0 +1,14 @@
+*fixture.txt*	Help fixture for tools_spec
+
+==============================================================================
+1. Alpha						*fixture-alpha*
+							*fixture-alpha-alias*
+Alpha text one.
+Alpha text two.
+
+==============================================================================
+2. Beta							*fixture-beta*
+
+Beta text. fixturegrep 1
+fixturegrep 2
+fixturegrep 3

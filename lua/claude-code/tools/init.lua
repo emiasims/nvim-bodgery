@@ -10,11 +10,18 @@ function M.register(name, spec)
   registered[name] = spec
 end
 
---- Every tool from `opts.tools` and `register()`, sorted by name. Handlers receive
+--- The built-in help tools and every tool from `opts.tools` and `register()`, sorted by
+--- name. A user tool with a built-in's name replaces it. Handlers receive
 --- `ctx = { session_id, bufnr }` for the calling terminal.
 --- @return claude-code.mcp.Tool[]
 function M.list()
-  local specs = vim.tbl_extend('force', {}, require('claude-code').config.tools, registered)
+  local specs = vim.tbl_extend(
+    'force',
+    {},
+    require('claude-code.tools.help').tools,
+    require('claude-code').config.tools,
+    registered
+  )
   local names = vim.tbl_keys(specs)
   table.sort(names)
   local out = {}
