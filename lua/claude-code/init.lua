@@ -72,6 +72,7 @@ function M.setup(opts)
 
   vim.api.nvim_create_user_command('Claude', function(ev)
     M.open({ args = ev.fargs, mods = ev.smods })
+    vim.cmd.startinsert()
   end, { nargs = '*', desc = 'Start Claude in a split' })
 
   local mcp = require('claude-code.server.mcp')
