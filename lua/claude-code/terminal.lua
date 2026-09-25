@@ -5,6 +5,8 @@ local M = {}
 --- @field token string
 --- @field job integer
 --- @field cwd string
+--- @field config claude-code.Config
+--- @field harness table the module `config.harness` names
 --- @field session_id? string
 --- @field status? 'busy'|'idle'|'waiting'
 
@@ -30,6 +32,7 @@ local function unregister(bufnr)
 end
 
 --- @class claude-code.OpenOpts
+--- @field config? string config name, defaults to |claude-code.default|
 --- @field cwd? string
 --- @field args? string[] appended to `opts.cmd`
 --- @field mods? vim.api.keyset.cmd_mods open in a split built by `:new` with these modifiers
@@ -43,10 +46,13 @@ end
 function M.open(opts)
   opts = opts or {}
   local cc = require('claude-code')
-  assert(cc.server, 'claude-code: call setup() first')
+  -- resolve first so a bad option fails before anything listens
+  local config = cc.configs[opts.config or cc.default]
+  local harness = cc.harnesses[config.harness]
+  cc.start(config.harness)
 
   local token = vim.text.hexencode(assert(vim.uv.random(16)))
-  local launch = cc.harness.launch({ cmd = cc.config.cmd, args = opts.args, token = token })
+  local launch = harness.launch({ cmd = config.cmd, args = opts.args, token = token })
 
   if opts.mods then
     vim.api.nvim_cmd({ cmd = 'new', mods = opts.mods }, {})
@@ -62,7 +68,7 @@ function M.open(opts)
   -- filetype detection never runs on terminal buffers
   vim.bo[bufnr].filetype = 'claude-code'
 
-  local term = { bufnr = bufnr, token = token, job = job, cwd = cwd }
+  local term = { bufnr = bufnr, token = token, job = job, cwd = cwd, config = config, harness = harness }
   M.terminals[bufnr] = term
   by_token[token] = term
   vim.api.nvim_create_autocmd('BufWipeout', {
@@ -109,7 +115,8 @@ function M.active(bufnr)
   if #shown == 1 then
     return shown[1]
   end
-  local resolve = require('claude-code').config.resolve
+  local cc = require('claude-code')
+  local resolve = cc.configs[cc.default].resolve
   local resolved = resolve and resolve()
   if resolved and M.terminals[resolved] then
     return M.terminals[resolved]

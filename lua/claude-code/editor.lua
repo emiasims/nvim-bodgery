@@ -1,13 +1,14 @@
 local M = {}
 
---- Opens `file` through `opts.editor.open` and calls `done` once its buffer is hidden or
---- deleted. Returns a function that stops waiting.
+--- Opens `file` through `open` and calls `done` once its buffer is hidden or deleted.
+--- Returns a function that stops waiting.
 --- @param file string
+--- @param open fun(file: string)
 --- @param done fun()
 --- @return fun() cancel
-function M.edit(file, done)
+function M.edit(file, open, done)
   vim.filetype.add({ filename = { [file] = 'claude-prompt' } })
-  require('claude-code').config.editor.open(file)
+  open(file)
   local bufnr = vim.fn.bufnr(file)
   local group = vim.api.nvim_create_augroup('claude-code.editor.' .. bufnr, { clear = true })
   local function finish()
@@ -51,7 +52,9 @@ function M.register(server)
         return 400, { error = 'expected {"file": path}' }
       end
       local finished = false
-      local cancel = M.edit(file, function()
+      --- @type claude-code.Terminal
+      local term = req.ctx
+      local cancel = M.edit(file, term.config.editor.open, function()
         finished = true
         req.conn.on_close = nil
         respond(200, vim.empty_dict())

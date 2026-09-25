@@ -31,6 +31,7 @@ describe('hooks', function()
           end,
         },
       })
+      cc.start('claude')
       _G.bufnr = cc.open()
       _G.token = require('claude-code.terminal').terminals[bufnr].token
       _G.fired = h.record_events()
@@ -72,7 +73,7 @@ describe('hooks', function()
 
   it('binds the session through the SessionStart command hook', function()
     exec_lua(function()
-      local path = vim.fs.joinpath(cc.harness.state.dir, 'settings.json')
+      local path = vim.fs.joinpath(cc.harnesses.claude.state.dir, 'settings.json')
       local settings = vim.json.decode(table.concat(vim.fn.readfile(path), '\n'))
       local done
       -- asynchronous, since this Neovim serves the request

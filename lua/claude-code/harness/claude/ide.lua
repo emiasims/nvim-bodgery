@@ -194,7 +194,8 @@ end
 function M.attach(group)
   local function auto(fn)
     return function()
-      if next(M.clients) and require('claude-code').config.selection.auto then
+      local cc = require('claude-code')
+      if next(M.clients) and cc.configs[cc.default].selection.auto then
         fn()
       end
     end
@@ -269,7 +270,8 @@ function M.tools()
       end,
     },
   }
-  if require('claude-code').config.execute_code then
+  local cc = require('claude-code')
+  if cc.configs[cc.default].execute_code then
     tools[#tools + 1] = {
       name = 'executeCode',
       description = "Run Lua in the user's Neovim and return the inspected return values",

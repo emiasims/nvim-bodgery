@@ -10,7 +10,8 @@ describe('diff', function()
       _G.cc = require('claude-code')
       _G.diff = require('claude-code.harness.claude.diff')
       cc.setup({ cmd = h.fake_cmd() })
-      _G.client = h.ws_connect(cc.server.port, cc.harness.state.auth_token)
+      cc.start('claude')
+      _G.client = h.ws_connect(cc.server.port, cc.harnesses.claude.state.auth_token)
 
       _G.dir = vim.fn.tempname()
       vim.fn.mkdir(dir, 'p')
@@ -235,7 +236,7 @@ describe('diff', function()
       vim.cmd.bdelete(diff.pending.d.bufnr)
       reply()
 
-      cc.config.diff.inline = false
+      cc.configs.claude.diff.inline = false
       open_diff('l', 'one\nA B C\nthree\nfour\n')
       h.eq(
         { { 1, 0, 'DiffAdd', nil, nil, nil }, { 1, 0, nil, nil, nil, 'A C' } },
@@ -349,7 +350,7 @@ describe('diff', function()
         vim.cmd.split()
         local chosen = vim.api.nvim_get_current_win()
         vim.cmd.wincmd('j')
-        cc.config.diff.window = function()
+        cc.configs.claude.diff.window = function()
           return chosen
         end
         open_diff('t', 'x\n')

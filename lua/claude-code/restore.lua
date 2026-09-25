@@ -3,6 +3,7 @@ local M = {}
 --- @class claude-code.RestoreEntry
 --- @field session_id string
 --- @field cwd string
+--- @field config? string config name
 --- @field time integer when a session file last saved the terminal
 
 --- @return string
@@ -32,12 +33,13 @@ local function write(entries)
   assert(vim.uv.fs_rename(tmp, path))
 end
 
---- Records every Claude terminal bound to a session, and drops entries older than
---- `opts.restore.max_age`.
+--- Records every Claude terminal bound to a session, and drops entries older than the
+--- default config's `restore.max_age`.
 function M.save()
   local entries = read()
   local now = os.time()
-  local max_age = require('claude-code').config.restore.max_age
+  local cc = require('claude-code')
+  local max_age = cc.configs[cc.default].restore.max_age
   for name, entry in pairs(entries) do
     if type(entry) ~= 'table' or now - (tonumber(entry.time) or 0) > max_age then
       entries[name] = nil
@@ -46,7 +48,7 @@ function M.save()
   for bufnr, term in pairs(require('claude-code.terminal').terminals) do
     if term.session_id then
       entries[vim.api.nvim_buf_get_name(bufnr)] =
-        { session_id = term.session_id, cwd = term.cwd, time = now }
+        { session_id = term.session_id, cwd = term.cwd, config = term.config.name, time = now }
     end
   end
   write(entries)
@@ -54,14 +56,15 @@ end
 
 --- Whether a running Claude or another plugin terminal holds session `id`.
 --- @param id string
+--- @param harness table
 --- @return boolean
-local function held(id)
+local function held(id, harness)
   for _, term in pairs(require('claude-code.terminal').terminals) do
     if term.session_id == id then
       return true
     end
   end
-  return require('claude-code').harness.live()[id] ~= nil
+  return harness.live()[id] ~= nil
 end
 
 --- Launches Claude in the restored buffer `bufnr`, resuming its session unless something
@@ -70,18 +73,19 @@ end
 --- @param entry claude-code.RestoreEntry
 local function relaunch(bufnr, entry)
   local cc = require('claude-code')
+  local harness = cc.harnesses[cc.configs[entry.config or cc.default].harness]
   local args
-  if held(entry.session_id) then
+  if held(entry.session_id, harness) then
     vim.notify(
       ('claude-code: session %s is already open, starting a new conversation'):format(entry.session_id),
       vim.log.levels.WARN
     )
   else
-    args = cc.harness.resume(entry.session_id).args
+    args = harness.resume(entry.session_id).args
   end
   vim.api.nvim_buf_call(bufnr, function()
     local terminal = require('claude-code.terminal')
-    terminal.open({ buf = true, cwd = entry.cwd, args = args })
+    terminal.open({ buf = true, cwd = entry.cwd, args = args, config = entry.config })
     if args then
       terminal.terminals[bufnr].session_id = entry.session_id
     end

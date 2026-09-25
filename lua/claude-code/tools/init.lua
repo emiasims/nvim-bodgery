@@ -10,17 +10,18 @@ function M.register(name, spec)
   registered[name] = spec
 end
 
---- The built-in help and screen tools and every tool from `opts.tools` and `register()`, sorted by
---- name. A user tool with a built-in's name replaces it. Handlers receive
+--- The built-in help and screen tools and every tool from `term`'s config and `register()`,
+--- sorted by name. A user tool with a built-in's name replaces it. Handlers receive
 --- `ctx = { session_id, bufnr }` for the calling terminal.
+--- @param term claude-code.Terminal
 --- @return claude-code.mcp.Tool[]
-function M.list()
+function M.list(term)
   local specs = vim.tbl_extend(
     'force',
     {},
     require('claude-code.tools.help').tools,
     { nvim_screen = require('claude-code.tools.screen').tool },
-    require('claude-code').config.tools,
+    term.config.tools,
     registered
   )
   local names = vim.tbl_keys(specs)

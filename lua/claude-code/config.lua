@@ -6,6 +6,8 @@ local M = {}
 --- @field handler fun(args: table, ctx: { session_id: string?, bufnr: integer }): any
 
 --- @class claude-code.Config
+--- @field name string key in |claude-code.configs|, defaults to `harness`
+--- @field harness string key in |claude-code.harnesses|
 --- @field cmd string[] command and default flags
 --- @field hooks table<string, fun(input: table): table?> hook event name to callback
 --- @field tools table<string, claude-code.ToolSpec>
@@ -18,6 +20,7 @@ local M = {}
 --- @field diff { window: fun(): integer, inline: boolean } `window` picks where a proposed edit shows, `inline` marks changes within a line
 --- @field ccd_dir string root of ccd's session index
 M.defaults = {
+  harness = 'claude',
   cmd = { 'claude' },
   hooks = {},
   tools = {},
@@ -64,7 +67,9 @@ local schema = {
   { 'editor', 'table' },
   { 'editor.open', 'function' },
   { 'execute_code', 'boolean' },
+  { 'harness', 'string' },
   { 'hooks', 'table' },
+  { 'name', 'string' },
   { 'on_busy', 'string' },
   { 'resolve', 'function', optional = true },
   { 'restore', 'table' },
@@ -110,6 +115,10 @@ local function validate(opts)
     end
   end
 
+  if not require('claude-code').harnesses._submodules[opts.harness] then
+    fail('harness: unknown harness %q', opts.harness)
+  end
+
   if #opts.cmd == 0 then
     fail('cmd: expected a non-empty list')
   end
@@ -146,6 +155,7 @@ function M.resolve(opts)
   local merged = vim.tbl_deep_extend('force', {}, M.defaults, opts)
   -- lists replace the default instead of merging by index
   merged.cmd = opts.cmd or M.defaults.cmd
+  merged.name = opts.name or merged.harness
   validate(merged)
   return merged
 end

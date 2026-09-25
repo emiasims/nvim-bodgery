@@ -19,13 +19,14 @@ describe('ide tools', function()
           },
         },
       })
+      cc.start('claude')
       _G.dir = vim.fn.tempname()
       vim.fn.mkdir(dir, 'p')
 
       local id = 0
       --- Calls an IDE tool over a fresh websocket and returns its MCP result.
       function _G.call(name, args)
-        local c = h.ws_connect(cc.server.port, cc.harness.state.auth_token)
+        local c = h.ws_connect(cc.server.port, cc.harnesses.claude.state.auth_token)
         id = id + 1
         c:send_text(vim.json.encode({
           jsonrpc = '2.0',
@@ -141,7 +142,7 @@ describe('ide tools', function()
   it('serves executeCode only when enabled', function()
     exec_lua(function()
       local function names()
-        local c = h.ws_connect(cc.server.port, cc.harness.state.auth_token)
+        local c = h.ws_connect(cc.server.port, cc.harnesses.claude.state.auth_token)
         c:send_text(vim.json.encode({ jsonrpc = '2.0', id = 1, method = 'tools/list' }))
         local list = vim.tbl_map(function(t)
           return t.name
@@ -153,7 +154,7 @@ describe('ide tools', function()
       h.eq(ide_tools, names())
       h.eq(-32602, call('executeCode', { code = 'return 1' }).code)
 
-      cc.config.execute_code = true
+      cc.configs.claude.execute_code = true
       h.eq(vim.list_extend(vim.list_slice(ide_tools), { 'executeCode' }), names())
       h.eq('3\n"x"', call('executeCode', { code = 'return 1 + 2, "x"' }).content[1].text)
       h.eq('nil', call('executeCode', { code = 'local _ = 1' }).content[1].text)
@@ -166,7 +167,7 @@ describe('ide tools', function()
 
   it('keeps IDE tools on the websocket and custom tools on /mcp', function()
     exec_lua(function()
-      local c = h.ws_connect(cc.server.port, cc.harness.state.auth_token)
+      local c = h.ws_connect(cc.server.port, cc.harnesses.claude.state.auth_token)
       c:send_text(vim.json.encode({ jsonrpc = '2.0', id = 1, method = 'tools/list' }))
       local ws_names = vim.tbl_map(function(t)
         return t.name

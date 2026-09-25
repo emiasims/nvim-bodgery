@@ -47,7 +47,7 @@ for p = 1, PROJECTS do
   end
 end
 
-require('claude-code').config = require('claude-code.config').resolve({ ccd_dir = ccd })
+require('claude-code').setup({ ccd_dir = ccd })
 local sessions = require('claude-code.harness.claude.sessions')
 
 local function time(filter)

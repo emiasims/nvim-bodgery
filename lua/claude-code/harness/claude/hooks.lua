@@ -174,7 +174,7 @@ function M.register(server)
         local term = req.ctx
         M.on_hook(event, input, term)
 
-        local callback = require('claude-code').config.hooks[event]
+        local callback = term.config.hooks[event]
         if not callback then
           return 200, vim.empty_dict()
         end

@@ -9,12 +9,13 @@ describe('selection', function()
       _G.before = h.handles()
       _G.cc = require('claude-code')
       cc.setup({ cmd = h.fake_cmd() })
+      cc.start('claude')
 
       _G.path = vim.fn.tempname() .. '.txt'
       vim.fn.writefile({ 'hello world', 'second line', 'third' }, path)
       vim.cmd.edit(path)
       vim.cmd.split()
-      _G.client = h.ws_connect(cc.server.port, cc.harness.state.auth_token)
+      _G.client = h.ws_connect(cc.server.port, cc.harnesses.claude.state.auth_token)
 
       local id = 0
       --- The next message Claude would receive, or nil when none was sent. A ping reply
@@ -120,7 +121,7 @@ describe('selection', function()
 
   it('sends nothing automatically when disabled, and on demand', function()
     exec_lua(function()
-      cc.config.selection.auto = false
+      cc.configs.claude.selection.auto = false
       keys('Vj<Esc>')
       vim.cmd.wincmd('w')
       h.eq(nil, next_message())

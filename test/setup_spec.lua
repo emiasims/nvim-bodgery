@@ -22,7 +22,7 @@ local function setup_error(opts)
     local cc = require('claude-code')
     cc.setup(revive(o))
     local ok, err = pcall(function()
-      return cc.config
+      return cc.configs[cc.default]
     end)
     return not ok and err or nil
   end, opts, fn)
@@ -45,9 +45,9 @@ describe('setup', function()
     local counts = exec_lua(function()
       local cc = require('claude-code')
       cc.setup()
-      local _ = cc.server
+      cc.start('claude')
       cc.setup({ cmd = { 'claude', '--verbose' } })
-      local _ = cc.server
+      cc.start('claude')
       local counts = {}
       for _, au in ipairs(vim.api.nvim_get_autocmds({ group = 'claude-code' })) do
         counts[au.event] = (counts[au.event] or 0) + 1
@@ -56,8 +56,6 @@ describe('setup', function()
     end)
     eq({
       VimLeavePre = 1,
-      WinLeave = 1,
-      ModeChanged = 1,
       SessionWritePost = 1,
       BufNew = 1,
       BufReadCmd = 1,
@@ -68,9 +66,9 @@ describe('setup', function()
     local locks = exec_lua(function()
       local cc = require('claude-code')
       cc.setup()
-      local _ = cc.server
+      cc.start('claude')
       cc.setup()
-      local _ = cc.server
+      cc.start('claude')
       return vim.fn.readdir(vim.env.CLAUDE_CONFIG_DIR .. '/ide')
     end)
     eq(1, #locks)
@@ -80,9 +78,9 @@ describe('setup', function()
     local n = exec_lua(function()
       local cc = require('claude-code')
       cc.setup()
-      local _ = cc.server
+      cc.start('claude')
       cc.setup()
-      local _ = cc.server
+      cc.start('claude')
       local n = 0
       for _, kind in pairs(require('test.helpers').handles()) do
         n = n + (kind == 'tcp' and 1 or 0)
@@ -97,7 +95,7 @@ describe('setup', function()
       local cc = require('claude-code')
       cc.setup({ cmd = { 'claude', '--verbose' }, on_busy = 'queue' })
       cc.setup({ cmd = { 'other' } })
-      return { cmd = cc.config.cmd, on_busy = cc.config.on_busy }
+      return { cmd = cc.configs.claude.cmd, on_busy = cc.configs.claude.on_busy }
     end)
     eq({ cmd = { 'other' }, on_busy = 'error' }, config)
   end)
@@ -106,9 +104,7 @@ describe('setup', function()
     local n = exec_lua(function()
       local cc = require('claude-code')
       cc.setup({ cmd = 'claude' })
-      pcall(function()
-        return cc.server
-      end)
+      pcall(cc.open)
       local n = 0
       for _, kind in pairs(require('test.helpers').handles()) do
         n = n + (kind == 'tcp' and 1 or 0)
@@ -141,6 +137,7 @@ describe('setup', function()
     { 'editor', { editor = fn } },
     { 'editor.open', { editor = { open = 'split' } } },
     { 'ccd_dir', { ccd_dir = 1 } },
+    { 'harness', { harness = 'codex' } },
     { 'nope', { nope = 1 } },
     { 'restore.nope', { restore = { nope = 1 } } },
   }

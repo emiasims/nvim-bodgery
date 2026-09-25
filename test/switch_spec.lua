@@ -9,6 +9,7 @@ describe('switch', function()
       _G.before = h.handles()
       _G.cc = require('claude-code')
       cc.setup({ cmd = h.fake_cmd() })
+      cc.start('claude')
       _G.terminal = require('claude-code.terminal')
 
       --- Waits until fake-claude in `bufnr` has read `lines` from its terminal.
@@ -63,7 +64,7 @@ describe('switch', function()
       cc.switch(b, 'two')
       h.eq({ '/resume two' }, stdin(b, { 1 }))
 
-      cc.config.resolve = function()
+      cc.configs.claude.resolve = function()
         return a
       end
       cc.switch('three')
@@ -78,11 +79,11 @@ describe('switch', function()
       local ok, e = pcall(cc.switch, 'x')
       h.eq({ false, 'claude-code: Claude is busy in buffer ' .. bufnr }, { ok, e })
 
-      cc.config.on_busy = 'interrupt'
+      cc.configs.claude.on_busy = 'interrupt'
       cc.switch('now')
       h.eq({ '\27/resume now' }, stdin(bufnr, { 1 }))
 
-      cc.config.on_busy = 'queue'
+      cc.configs.claude.on_busy = 'queue'
       cc.switch('later')
       vim.wait(3 * terminal.submit_delay)
       h.eq(1, #h.record(bufnr).stdin)
@@ -93,7 +94,7 @@ describe('switch', function()
 
   it('asks what to do when on_busy is prompt', function()
     exec_lua(function()
-      cc.config.on_busy = 'prompt'
+      cc.configs.claude.on_busy = 'prompt'
       local bufnr = cc.open()
       status(bufnr, 'busy')
       local calls = stub_select(function(items)

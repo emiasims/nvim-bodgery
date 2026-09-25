@@ -9,6 +9,7 @@ describe('custom tools', function()
       _G.before = h.handles()
       _G.cc = require('claude-code')
       cc.setup({ cmd = h.fake_cmd() })
+      cc.start('claude')
       _G.help = require('claude-code.tools.help')
 
       local id = 0

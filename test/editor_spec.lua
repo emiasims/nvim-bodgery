@@ -9,6 +9,7 @@ describe('prompt editor', function()
       _G.before = h.handles()
       _G.cc = require('claude-code')
       cc.setup({ cmd = h.fake_cmd() })
+      cc.start('claude')
       _G.token = require('claude-code.terminal').terminals[cc.open()].token
 
       _G.file = vim.fn.tempname()
@@ -86,7 +87,7 @@ describe('prompt editor', function()
   it('opens the file through opts.editor.open', function()
     exec_lua(function()
       local got
-      cc.config.editor.open = function(path)
+      cc.configs.claude.editor.open = function(path)
         got = path
         vim.cmd.edit(path)
       end

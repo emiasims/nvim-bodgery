@@ -21,13 +21,18 @@ SETUP                                                      *claude-code-setup*
 >lua
   require('claude-code').setup({})
 <
-`setup()` stores the options and defines |:Claude| and the session restore
-autocommands. It loads no other module. The first terminal opened starts a
+`setup()` stores a config and defines |:Claude| and the session restore
+autocommands. It loads no other module. Each call creates or replaces the
+config named `name`, so several configs, for the same harness or different
+ones, run side by side. The first `setup()` call's config is the default:
+|claude-code.open()| uses it when given no `config`, and functions with no
+terminal to take a config from read it.
+
+The first terminal opened starts a
 localhost server that carries Claude's hooks, the `nvim` MCP server, and the
 IDE websocket, and writes the lockfile Claude's `/ide` command reads
 (`$CLAUDE_CONFIG_DIR/ide/<port>.lock`, or `~/.claude/ide/`). Options are
-validated when first read, so a bad option raises then. Calling `setup()`
-again stops the server and replaces the configuration.
+validated when first read, so a bad option raises then.
 
 Claude terminals get the `claude-code` filetype, and drafts opened from the
 prompt editor get `claude-prompt`.
@@ -42,6 +47,8 @@ OPTIONS                                                  *claude-code-options*
 Defaults:
 >lua
   {
+    name = <harness>,
+    harness = 'claude',
     cmd = { 'claude' },
     hooks = {},
     tools = {},
@@ -55,6 +62,12 @@ Defaults:
     ccd_dir = '~/Library/Application Support/Claude/claude-code-sessions',
   }
 <
+name ~
+    Key of this config in `require('claude-code').configs`.
+
+harness ~
+    The agent this config launches. Only `'claude'` exists.
+
 cmd ~
     Command and default flags. `args` from |claude-code.open()| and |:Claude|
     are appended.
@@ -123,9 +136,10 @@ open({opts})
     Start Claude in a terminal and return its buffer. Without `mods` the
     terminal takes the current window, as |:terminal| does.
     Fields of {opts}:
-      `cwd`   working directory
-      `args`  list appended to `cmd`
-      `mods`  |nvim_parse_cmd()| modifiers; open in a split built from them
+      `config`  config name, the default config when omitted
+      `cwd`     working directory
+      `args`    list appended to `cmd`
+      `mods`    |nvim_parse_cmd()| modifiers; open in a split built from them
 
                                                          *claude-code.tool()*
 tool({name}, {spec})
@@ -169,7 +183,7 @@ subtasks({session_id})
 
                                                          *claude-code.stop()*
 stop()
-    Stop the server and remove the lockfile. |claude-code.setup()| starts
+    Stop the server and remove the lockfile. The next terminal opened starts
     them again.
 
                                                           *claude-code-active*

@@ -196,7 +196,8 @@ end
 --- @return table<string, { title: string?, isArchived: boolean? }>
 local function ccd_index()
   local out = {}
-  local root = require('claude-code').config.ccd_dir
+  local cc = require('claude-code')
+  local root = cc.configs[cc.default].ccd_dir
   for name, kind in vim.fs.dir(root, { depth = 3 }) do
     if kind == 'file' and vim.fs.basename(name):match('^local_.*%.json$') then
       local f = io.open(vim.fs.joinpath(root, name), 'rb')

@@ -112,7 +112,7 @@ function M.start(server)
       handlers.on_close(conn)
     end,
   }))
-  ide.attach(vim.api.nvim_create_augroup('claude-code', { clear = false }))
+  ide.attach(vim.api.nvim_create_augroup('claude-code.ide', { clear = true }))
 end
 
 --- Removes the lockfile and the launch files.
