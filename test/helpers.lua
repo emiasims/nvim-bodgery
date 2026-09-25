@@ -204,4 +204,70 @@ function M.request(port, method, path, opts)
   return res
 end
 
+--- Sends a websocket upgrade request and returns the client and the server's response.
+--- @param port integer
+--- @param token? string `X-Claude-Code-Ide-Authorization`
+--- @param path? string default '/'
+--- @return test.Client
+--- @return test.Response
+function M.ws_connect(port, token, path)
+  local client = M.connect(port)
+  client:send(M.format_request('GET', path or '/', {
+    headers = {
+      Upgrade = 'websocket',
+      Connection = 'Upgrade',
+      ['Sec-WebSocket-Key'] = 'dGhlIHNhbXBsZSBub25jZQ==',
+      ['Sec-WebSocket-Version'] = '13',
+      ['Sec-WebSocket-Protocol'] = 'mcp',
+      ['X-Claude-Code-Ide-Authorization'] = token,
+    },
+  }))
+  return client, client:read()
+end
+
+--- Sends one masked frame. See `Client:send` for `step`.
+--- @param opcode integer
+--- @param payload string
+--- @param step? integer
+function Client:send_frame(opcode, payload, step)
+  self:send(require('claude-code.server.ws').encode(opcode, payload, 'abcd'), step)
+end
+
+--- @param text string
+function Client:send_text(text)
+  self:send_frame(require('claude-code.server.ws').OP.TEXT, text)
+end
+
+--- Waits for the next frame from the server.
+--- @return claude-code.ws.Frame
+function Client:recv()
+  local ws = require('claude-code.server.ws')
+  local frame
+  M.wait(function()
+    local f, consumed = ws.decode(self.buf)
+    if f then
+      frame = f
+      self.buf = self.buf:sub(consumed + 1)
+      return true
+    end
+    return self.eof
+  end, 'frame')
+  assert(frame, 'connection closed before a frame')
+  return frame
+end
+
+--- Waits for the next text frame and decodes it as JSON.
+--- @return any
+function Client:recv_json()
+  local frame = self:recv()
+  assert(frame.opcode == 0x1, 'expected a text frame, got opcode ' .. frame.opcode)
+  return vim.json.decode(frame.payload)
+end
+
+--- @param frame claude-code.ws.Frame
+--- @return integer
+function M.close_code(frame)
+  return frame.payload:byte(1) * 256 + frame.payload:byte(2)
+end
+
 return M
