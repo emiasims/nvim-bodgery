@@ -215,7 +215,7 @@ Tests, on the fixture tree:
 - sessions titled by ccd, by `custom-title`, and by first prompt only, an archived one, one live (the test's own PID), and one with a dead PID
 - a `cwd` filter opens no file outside that project, checked by wrapping the read function
 - reading a title from a generated 50 MB transcript stops at the byte cap
-- `touched()` from a transcript matches `touched()` built from the recorded hooks of the same session
+- `touched()` from a transcript matches `touched()` built from the recorded hooks of the same session. Not written yet: it needs the real transcript of the hook-capture session, and auto mode refused to copy it into `test/fixtures/`. Ask Emilia whether to commit it (attachments stripped, home and user scrubbed as `capture-hooks.lua` does) or drop the test.
 - malformed JSON lines are skipped without an error
 
 `make bench` generates 1000 sessions with 1 MB transcripts and times `sessions()` for all fields and for a single project. Set the budgets after the first run, then keep the bench as a regression check.
@@ -236,7 +236,7 @@ Tests:
 
 Start with a spike, because Neovim restores `term://` buffers through its own `BufReadCmd`. Find out whether the plugin's handler can run in place of Neovim's for its own terminals, and which one runs first. Then decide how to relaunch a terminal with a fresh token and port. Record the result in DECISIONS.md before building. Launch arguments hold file paths, not the port or token, so a stale command line is harmless as long as the plugin relaunches the terminal.
 
-`restore.lua` then writes `stdpath('state')/claude-code/terminals.json` on `SessionWritePost`, handles restored Claude terminals, sends `/resume <id>`, re-keys the entry under the new buffer name, and purges entries older than `opts.restore.max_age`.
+`restore.lua` then writes `stdpath('state')/claude-code/terminals.json` on `SessionWritePost`, relaunches restored Claude terminals with `--resume <id>`, and purges entries older than `opts.restore.max_age`. The spike's result is in DECISIONS.md.
 
 Tests:
 
@@ -259,7 +259,7 @@ Tests:
 
 ### 15. Contract check and help file
 
-`make contract` runs `strings -n 6` on the installed binary and checks for each literal in DECISIONS.md's Sources, printing the missing ones. `doc/claude-code.txt` documents setup, the API, events, and options.
+`make contract` runs `strings -n 6` on the installed binary and checks for each literal in DECISIONS.md's Sources, printing the missing ones. Skip literals marked as minified names. Rewrite `method:R("selection_changed")` as `("selection_changed")` and `type:R("http")` as `allowedEnvVars` first, since `R` is a minified name that changes per build. All other Sources literals are present in 2.1.282. `doc/claude-code.txt` documents setup, the API, events, and options.
 
 ### 16. Manual checklist with real Claude
 
@@ -272,6 +272,6 @@ Run each release, and after each Claude upgrade:
 - `openDiff` accept, accept with the user's changes, and reject behave as in step 9
 - a selection and a moved cursor are attached to the next prompt
 - `<C-g>` opens the draft in Neovim, and the edited text comes back as the prompt
-- `switch`, both in place and with `new = true`
+- `switch`, both in place and with `new = true`. The in-place path types `/resume <id>`, then Enter after `terminal.submit_delay` (100 ms), on the unverified assumption that Enter arriving with the text is read as a pasted newline. `on_busy = 'interrupt'` sends Esc and waits the same delay. Adjust both if Claude misreads them.
 - quit Neovim with two Claude terminals, restart from the session, and both conversations resume
 - with `http_proxy` set, hooks and MCP still reach the server
