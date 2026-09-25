@@ -1,0 +1,284 @@
+*claude-code.txt*  Claude Code in Neovim terminals
+
+==============================================================================
+CONTENTS                                                   *claude-code*
+
+  Setup .................................... |claude-code-setup|
+  Options .................................. |claude-code-options|
+  Commands ................................. |claude-code-commands|
+  Functions ................................ |claude-code-api|
+  Pickers .................................. |claude-code-pickers|
+  Events ................................... |claude-code-events|
+  Tools .................................... |claude-code-tools|
+  Diff review .............................. |claude-code-diff|
+  Prompt editor ............................ |claude-code-editor|
+  Session restore .......................... |claude-code-restore|
+
+==============================================================================
+SETUP                                                      *claude-code-setup*
+                                                        *claude-code.setup()*
+
+>lua
+  require('claude-code').setup({})
+<
+`setup()` starts a localhost server that carries Claude's hooks, the `nvim`
+MCP server, and the IDE websocket, and writes the lockfile Claude's `/ide`
+command reads (`$CLAUDE_CONFIG_DIR/ide/<port>.lock`, or `~/.claude/ide/`).
+Calling it again replaces the configuration and restarts the server.
+
+Only terminals opened by the plugin (|:Claude|, |claude-code.open()|) get
+hooks, events, and custom tools. Each terminal authenticates with its own
+token, passed in the `CLAUDE_NVIM_TOKEN` environment variable.
+
+==============================================================================
+OPTIONS                                                  *claude-code-options*
+
+Defaults:
+>lua
+  {
+    cmd = { 'claude' },
+    hooks = {},
+    tools = {},
+    execute_code = false,
+    selection = { auto = true },
+    on_busy = 'error',
+    resolve = nil,
+    restore = { max_age = 30 * 24 * 60 * 60 },
+    editor = { open = function(file) vim.cmd.split(file) end },
+    diff = { inline = true, window = <nearest window to Claude> },
+    ccd_dir = '~/Library/Application Support/Claude/claude-code-sessions',
+  }
+<
+cmd ~
+    Command and default flags. `args` from |claude-code.open()| and |:Claude|
+    are appended.
+
+hooks ~
+    Map from hook event to `function(input)`. `input` is Claude's hook
+    payload. A returned table is sent back to Claude as the hook response,
+    so a callback can deny a tool or add context. Events: `SessionStart`,
+    `PreToolUse`, `PostToolUse`, `SubagentStart`, `SubagentStop`,
+    `UserPromptSubmit`, `Stop`, `Notification`, `SessionEnd`. Errors are
+    reported with |vim.notify()| and Claude receives `{}`.
+
+tools ~
+    Custom MCP tools, see |claude-code-tools|.
+
+execute_code ~
+    Serve the `executeCode` IDE tool, which runs Lua from Claude in this
+    Neovim. Never put it on a permission allowlist: one approval covers
+    |vim.fn.system()|.
+
+selection.auto ~
+    Send the selection or cursor position to Claude on |WinLeave| from file
+    windows and when leaving Visual mode. Claude attaches the latest one to
+    the next prompt.
+
+on_busy ~
+    What |claude-code.switch()| does while Claude is working or waiting on
+    a permission prompt: `'error'` raises, `'interrupt'` sends <Esc> first,
+    `'queue'` waits for the next idle status, and `'prompt'` asks through
+    |vim.ui.select()|.
+
+resolve ~
+    `function(): integer?` returning the terminal buffer to act on when zero
+    or several Claude terminals are shown. See |claude-code-active|.
+
+restore.max_age ~
+    Seconds before an unused entry leaves the restore state file.
+
+editor.open ~
+    `function(file)` that shows the <C-g> draft. See |claude-code-editor|.
+
+diff.window ~
+    `function(): integer` returning the window for a proposed edit.
+
+diff.inline ~
+    Mark inserted and removed characters within changed lines.
+
+ccd_dir ~
+    Root of the Claude desktop app's session index, read for titles and
+    archive state.
+
+==============================================================================
+COMMANDS                                                *claude-code-commands*
+
+                                                                     *:Claude*
+:[mods] Claude [args]
+    Start Claude in a split, with `args` appended to `cmd`. Modifiers work as
+    they do for |:split|: `:vertical Claude`, `:tab Claude`,
+    `:botright Claude`.
+
+==============================================================================
+FUNCTIONS                                                    *claude-code-api*
+
+                                                         *claude-code.open()*
+open({opts})
+    Start Claude in a terminal and return its buffer. Without `mods` the
+    terminal takes the current window, as |:terminal| does.
+    Fields of {opts}:
+      `cwd`   working directory
+      `args`  list appended to `cmd`
+      `mods`  |nvim_parse_cmd()| modifiers; open in a split built from them
+
+                                                         *claude-code.tool()*
+tool({name}, {spec})
+    Register or replace a custom tool. See |claude-code-tools|.
+
+                                               *claude-code.send_selection()*
+send_selection()
+    Send the current Visual selection, or the last one in this buffer.
+
+                                              *claude-code.send_at_mention()*
+send_at_mention({range})
+    Mention the current file in Claude's prompt. {range} is an optional
+    `{ first, last }` pair of 1-based lines.
+
+                                                       *claude-code.switch()*
+switch([{bufnr},] {id} [, {opts}])
+    Resume session {id} in the active terminal by typing `/resume {id}`.
+    With `{ new = true }` open a new terminal in the current window with
+    `--resume {id}` instead, leaving the old one running.
+
+                                                     *claude-code.sessions()*
+sessions({filter})
+    Iterator over sessions, newest first. Each record has `id`,
+    `last_activity` (seconds since the epoch), `cwd`, `title`, `archived`,
+    `live` (`{ pid, status, name }` for a running Claude), and `bufnr` when a
+    plugin terminal holds it. Fields of {filter}:
+      `cwd`       only sessions started in this directory
+      `archived`  only archived, or only unarchived, sessions
+      `fields`    fields to fill beyond `id` and `last_activity`
+    Leaving the loop early skips reading the remaining transcripts.
+
+                                                      *claude-code.touched()*
+touched({session_id})
+    Files Claude read or edited in the session.
+
+                                                     *claude-code.subtasks()*
+subtasks({session_id})
+    Subagents and background commands of the session. Each has `id`, `kind`
+    (`'agent'` or `'bash'`), `description`, `open`, and `path` (the agent's
+    transcript, or a finished command's output).
+
+                                                         *claude-code.stop()*
+stop()
+    Stop the server and remove the lockfile. |claude-code.setup()| starts
+    them again.
+
+                                                          *claude-code-active*
+Functions acting on "the active terminal" use {bufnr} when given, otherwise
+the one Claude terminal shown in the current tab. With none or several shown,
+they call `resolve`, and raise when it returns nothing.
+
+==============================================================================
+PICKERS                                                  *claude-code-pickers*
+
+`require('claude-code.select')` offers three pickers through
+|vim.ui.select()|. Each takes an optional `on_choice(item)` that replaces the
+default action.
+
+sessions({opts})
+    Unarchived sessions started in `opts.cwd` (default: |getcwd()|). Choosing
+    one shows the terminal holding it, or resumes it with
+    |claude-code.switch()|.
+
+subtasks({opts})
+    Subtasks of `opts.session_id` (default: the active terminal's session).
+    Choosing one opens its transcript or output.
+
+touched({opts})
+    Files touched in `opts.session_id` (default: the active terminal's
+    session). Choosing one edits it.
+
+==============================================================================
+EVENTS                                                    *claude-code-events*
+
+|User| autocommands. Every `ev.data` carries `session_id` and `bufnr`.
+
+ClaudeSessionEnter      a terminal starts or switches to a session; `source`
+                        is Claude's SessionStart source when known
+ClaudeSessionLeave      a terminal's session ends or is replaced. On
+                        `/resume` and `/clear` it fires before the new
+                        session's ClaudeSessionEnter.
+ClaudeToolUsePre        before a tool runs: `tool_name`, `tool_input`,
+                        `tool_use_id`
+ClaudeToolUsePost       after a tool runs, adding `tool_response`
+ClaudeFilesChanged      the touched list grew: `files`
+ClaudeStatusChanged     `status` became `'busy'`, `'idle'`, or `'waiting'`
+ClaudeSubtaskOpen       a subagent or background command started: `subtask`
+ClaudeSubtaskClose      it finished: `subtask`
+
+>lua
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'ClaudeStatusChanged',
+    callback = function(ev)
+      if ev.data.status == 'waiting' then
+        vim.notify('Claude needs input in buffer ' .. ev.data.bufnr)
+      end
+    end,
+  })
+<
+==============================================================================
+TOOLS                                                      *claude-code-tools*
+
+Tools from `opts.tools` and |claude-code.tool()| are served by the `nvim` MCP
+server, and Claude sees them as `mcp__nvim__<name>`. Tools registered during
+a session show up in Claude's next tool listing.
+>lua
+  require('claude-code').tool('buffer_names', {
+    description = 'List the files open in Neovim',
+    input_schema = { type = 'object', properties = {} },
+    handler = function(args, ctx)
+      return vim.tbl_map(vim.api.nvim_buf_get_name, vim.api.nvim_list_bufs())
+    end,
+  })
+<
+`handler(args, ctx)` runs in this Neovim. `ctx` has `session_id` and the
+calling terminal's `bufnr`. A returned string is sent as text and a table as
+JSON. An error becomes an error result for Claude.
+
+Built in:
+  `nvim_help`         the help section from a tag to the next tag
+  `nvim_help_search`  help tags matching a pattern
+  `nvim_helpgrep`     help text matching a pattern, leaving the quickfix
+                      list alone
+
+Claude also calls `getDiagnostics` before and after each edit. The reply
+covers |vim.diagnostic| entries and treesitter syntax errors in loaded
+buffers, so Claude sees syntax errors its edit introduced.
+
+==============================================================================
+DIFF REVIEW                                                 *claude-code-diff*
+
+When Claude proposes an edit through the IDE connection (`/ide`), the
+proposed contents open in a buffer in the window chosen by `diff.window`.
+Added lines are highlighted and removed lines show as virtual lines. The
+buffer is editable.
+
+  |:w|                     accept, and Claude writes the buffer's contents,
+                         including your edits
+  delete or hide buffer  reject
+
+Answering in the terminal instead closes the review. Afterwards the window
+gets its previous buffer back, or closes if it was opened for the review.
+
+==============================================================================
+PROMPT EDITOR                                             *claude-code-editor*
+
+<C-g> in Claude opens the draft prompt with `editor.open`, by default in a
+|:split|. Hiding or deleting the buffer sends the text back to Claude.
+
+==============================================================================
+SESSION RESTORE                                          *claude-code-restore*
+
+|:mksession| saves Claude terminals, and sourcing the session file relaunches
+each one with `--resume`, continuing its conversation. Source the session
+file after |claude-code.setup()|, or Neovim reruns the saved command and
+starts a new conversation. When the conversation is already open elsewhere,
+the terminal starts a new one and says so.
+
+The map from terminal to session lives in
+`stdpath('state')/claude-code/terminals.json`.
+
+ vim:tw=78:ts=8:ft=help:norl:

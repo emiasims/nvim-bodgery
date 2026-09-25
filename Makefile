@@ -22,6 +22,10 @@ test: nvim-test
 bench:
 	nvim --clean -l test/bench.lua
 
+.PHONY: contract
+contract:
+	nvim --clean -l test/contract.lua
+
 .PHONY: clean
 clean:
 	rm -rf nvim-test

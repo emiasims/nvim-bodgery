@@ -16,6 +16,7 @@ lua/claude-code/
   diagnostics.lua       vim.diagnostic plus treesitter errors
   tools/init.lua        tool registry
   tools/help.lua        nvim_help, nvim_help_search, nvim_helpgrep
+  tools/screen.lua      nvim_screen
   server/http.lua       listener, request parsing, routing, auth
   server/ws.lua         upgrade handshake and frames
   server/sha1.lua       SHA-1 for the handshake
@@ -56,7 +57,7 @@ Real Claude never runs under `make test`. Three stand-ins replace it:
 
 `test/helpers.lua` holds an HTTP client and a websocket client on `vim.uv`. The websocket client encodes masked frames with `server/ws.lua`. It also holds `layout()`, which snapshots `winlayout()` and window buffers for every tab. Every spec that opens a window asserts that the snapshot outside the current window is unchanged afterwards.
 
-Two checks sit outside `make test`. `make contract` searches the installed Claude binary for the literal names in DECISIONS.md's Sources and fails when one is missing. The manual checklist in step 16 runs against real Claude before each release and after each Claude upgrade.
+Two checks sit outside `make test`. `make contract` searches the installed Claude binary for the literal names in DECISIONS.md's Sources and fails when one is missing. The manual checklist in step 17 runs against real Claude before each release and after each Claude upgrade.
 
 Handle leaks are checked the way pipe.nvim does it: specs record every `vim.uv` handle the server creates and assert all are closed after `stop()`.
 
@@ -111,7 +112,7 @@ Tests:
 - a request over HTTP and the same request over the websocket give identical results (table-driven)
 - a missing or unknown `Mcp-Session-Id` after `initialize` is refused
 
-Step 16 checks whether Claude re-reads `tools/list` during a session. JSON-only HTTP can't push `notifications/tools/list_changed`. If Claude caches the list, DECISIONS.md's statement that tools registered mid-session appear without a restart needs correcting.
+Step 17 checks whether Claude re-reads `tools/list` during a session. JSON-only HTTP can't push `notifications/tools/list_changed`. If Claude caches the list, DECISIONS.md's statement that tools registered mid-session appear without a restart needs correcting.
 
 ### 5. Terminals and launch
 
@@ -259,9 +260,19 @@ Tests:
 
 ### 15. Contract check and help file
 
-`make contract` runs `strings -n 6` on the installed binary and checks for each literal in DECISIONS.md's Sources, printing the missing ones. Skip literals marked as minified names. Rewrite `method:R("selection_changed")` as `("selection_changed")` and `type:R("http")` as `allowedEnvVars` first, since `R` is a minified name that changes per build. All other Sources literals are present in 2.1.282. `doc/claude-code.txt` documents setup, the API, events, and options.
+`make contract` runs `strings -n 6` on the installed binary and checks for each literal in DECISIONS.md's Sources, printing the missing ones. Skip literals marked as minified names. `doc/claude-code.txt` documents setup, the API, events, and options.
 
-### 16. Manual checklist with real Claude
+### 16. Screen tool
+
+`tools/screen.lua` adds a built-in `nvim_screen` tool returning what the user sees: the whole grid as text, one line per screen row, read with `screenstring()`, including windows, status lines, tabline, and command line. With `highlights = true` it also returns runs of cells sharing a highlight, with group names. `screenattr()` gives only numeric ids, so how to recover names (per-window `vim.inspect_pos()`, or attaching a UI with `ext_hlstate` over `serverstart()`) is settled at the start of the step. Claude's own terminal is part of the capture.
+
+Tests, with nvim-test's attached screen:
+
+- a buffer with known lines appears at its window's rows, and the status line and command line rows match `screen:expect`
+- wide characters and a vertical split keep every row at `&columns` cells
+- with `highlights`, a line highlighted with a known group reports that group over the right columns
+
+### 17. Manual checklist with real Claude
 
 Run each release, and after each Claude upgrade:
 

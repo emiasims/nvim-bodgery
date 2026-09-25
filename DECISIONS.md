@@ -79,7 +79,7 @@ The plugin sends Claude:
 
 Tools come from `opts.tools = { name = { description, input_schema, handler = function(args, ctx) ... end } }` or `tool(name, spec)`. Handlers run in the main Neovim, and `ctx` carries `session_id` and the terminal `bufnr`. Claude sees them as `mcp__nvim__<name>`. The tool list is read on every `tools/list`, so tools registered mid-session appear without a restart.
 
-Built in: `nvim_help(tag)` returns the section from a tag to the next tag, `nvim_help_search(pattern)` matches tag names through `taglist()`, and `nvim_helpgrep(pattern)` searches full text.
+Built in: `nvim_help(tag)` returns the section from a tag to the next tag, `nvim_help_search(pattern)` matches tag names through `taglist()`, and `nvim_helpgrep(pattern)` searches full text. `nvim_screen({ highlights? })` returns the screen as text, optionally with highlight group runs.
 
 ## Data
 
@@ -125,14 +125,14 @@ The Claude Code binary is at `/opt/homebrew/Caskroom/claude-code@latest/<version
 - `callIdeRpc(` and `g0n(` (minified name, changes per build) for the calls Claude makes to the editor: `openDiff`, `close_tab`, `closeAllDiffTabs`, `getDiagnostics`
 - `"FILE_SAVED"`, `"DIFF_REJECTED"`, and `"TAB_CLOSED"` for how Claude reads an `openDiff` reply
 - `"mcp__ide__executeCode","mcp__ide__getDiagnostics"` for the allowlist of IDE tools shown to the model
-- `method:R("selection_changed")` and `at_mentioned` for the notification formats
+- `("selection_changed")` and `at_mentioned` for the notification formats
 - `opened_file_in_ide` and `selected_lines_in_ide` for how the selection is attached to a prompt
 - `beforeFileEdited` for the pre-edit `getDiagnostics` call
 - `X-Claude-Code-Ide-Authorization` and `workspaceFolders` (lockfile parsing) for the websocket connection
-- `type:R("http")` for the HTTP hook schema, including `allowedEnvVars`
+- `allowedEnvVars` for the HTTP hook schema
 - `HTTP hooks are not supported for` for the events that skip HTTP hooks (`SessionStart`, `Setup`)
 - `FORCE_CODE_TERMINAL` and `CLAUDE_CODE_SSE_PORT`
-- `externalEditorContext` for the `<C-g>` response context
+- `externalEditorContext` for the prompt editor's response context
 
 Hook payloads in `test/fixtures/hooks/` were recorded from 2.1.281 by `test/capture-hooks.lua`. Rerun it after a Claude upgrade.
 
