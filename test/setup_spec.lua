@@ -20,8 +20,8 @@ local function setup_error(opts)
       return t
     end
     local cc = require('bodging')
-    cc.setup(revive(o))
     local ok, err = pcall(function()
+      cc.setup(revive(o))
       return cc.configs[cc.default]
     end)
     return not ok and err or nil
@@ -138,6 +138,7 @@ describe('setup', function()
     { 'editor.open', { editor = { open = 'split' } } },
     { 'ccd_dir', { ccd_dir = 1 } },
     { 'harness', { harness = 'codex' } },
+    { 'command', { command = 'agent' } },
     { 'nope', { nope = 1 } },
     { 'restore.nope', { restore = { nope = 1 } } },
   }

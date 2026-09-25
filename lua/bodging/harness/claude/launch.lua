@@ -6,11 +6,8 @@ M.TOKEN_ENV = 'BODGING_TOKEN'
 
 local root = vim.fs.normalize(debug.getinfo(1, 'S').source:sub(2)):match('^(.*)/lua/bodging/')
 
-M.editor = vim.fs.joinpath(
-  root,
-  'bin',
-  vim.fn.has('win32') == 1 and 'bodging-editor.cmd' or 'bodging-editor'
-)
+M.editor =
+  vim.fs.joinpath(root, 'bin', vim.fn.has('win32') == 1 and 'bodging-editor.cmd' or 'bodging-editor')
 
 --- Claude's config directory: `$CLAUDE_CONFIG_DIR`, else `~/.claude`.
 --- @return string

@@ -66,7 +66,15 @@ describe('hooks', function()
   it('binds the session on SessionStart', function()
     exec_lua(function()
       send('SessionStart-startup')
-      h.eq({ { 'ClaudeSessionEnter', { session_id = SID, bufnr = bufnr, source = 'startup' } } }, fired)
+      h.eq(
+        {
+          {
+            'ClaudeSessionEnter',
+            { session_id = SID, bufnr = bufnr, config = 'claude', source = 'startup' },
+          },
+        },
+        fired
+      )
       h.eq(SID, require('bodging.terminal').terminals[bufnr].session_id)
     end)
   end)
@@ -87,7 +95,15 @@ describe('hooks', function()
         return done
       end, 'curl')
       h.eq({ 0, '{}' }, { done.code, done.stdout })
-      h.eq({ { 'ClaudeSessionEnter', { session_id = SID, bufnr = bufnr, source = 'startup' } } }, fired)
+      h.eq(
+        {
+          {
+            'ClaudeSessionEnter',
+            { session_id = SID, bufnr = bufnr, config = 'claude', source = 'startup' },
+          },
+        },
+        fired
+      )
     end)
   end)
 
@@ -97,11 +113,20 @@ describe('hooks', function()
       send('SessionStart-resume', 'session-2')
       send('SessionStart-clear', 'session-3')
       h.eq({
-        { 'ClaudeSessionEnter', { session_id = SID, bufnr = bufnr, source = 'startup' } },
-        { 'ClaudeSessionLeave', { session_id = SID, bufnr = bufnr } },
-        { 'ClaudeSessionEnter', { session_id = 'session-2', bufnr = bufnr, source = 'resume' } },
-        { 'ClaudeSessionLeave', { session_id = 'session-2', bufnr = bufnr } },
-        { 'ClaudeSessionEnter', { session_id = 'session-3', bufnr = bufnr, source = 'clear' } },
+        {
+          'ClaudeSessionEnter',
+          { session_id = SID, bufnr = bufnr, config = 'claude', source = 'startup' },
+        },
+        { 'ClaudeSessionLeave', { session_id = SID, bufnr = bufnr, config = 'claude' } },
+        {
+          'ClaudeSessionEnter',
+          { session_id = 'session-2', bufnr = bufnr, config = 'claude', source = 'resume' },
+        },
+        { 'ClaudeSessionLeave', { session_id = 'session-2', bufnr = bufnr, config = 'claude' } },
+        {
+          'ClaudeSessionEnter',
+          { session_id = 'session-3', bufnr = bufnr, config = 'claude', source = 'clear' },
+        },
       }, fired)
     end)
   end)
@@ -192,7 +217,7 @@ describe('hooks', function()
     end)
   end)
 
-  it('puts session_id and bufnr in every event', function()
+  it('puts session_id, bufnr, and config in every event', function()
     exec_lua(function()
       local names = vim.fn.readdir(h.root .. '/test/fixtures/hooks')
       table.sort(names)
@@ -202,7 +227,7 @@ describe('hooks', function()
       end
       assert(#fired > 10, #fired)
       for _, e in ipairs(fired) do
-        assert(e[2].session_id and e[2].bufnr == bufnr, vim.inspect(e))
+        assert(e[2].session_id and e[2].bufnr == bufnr and e[2].config == 'claude', vim.inspect(e))
       end
     end)
   end)

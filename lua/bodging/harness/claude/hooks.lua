@@ -25,7 +25,11 @@ end
 --- @param term bodging.Terminal
 --- @param extra? table
 local function data(term, extra)
-  return vim.tbl_extend('force', { session_id = term.session_id, bufnr = term.bufnr }, extra or {})
+  return vim.tbl_extend(
+    'force',
+    { session_id = term.session_id, bufnr = term.bufnr, config = term.config.name },
+    extra or {}
+  )
 end
 
 --- @param term bodging.Terminal

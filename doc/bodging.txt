@@ -49,6 +49,7 @@ Defaults:
   {
     name = <harness>,
     harness = 'claude',
+    command = <harness, capitalized>,
     cmd = { 'claude' },
     hooks = {},
     tools = {},
@@ -67,6 +68,12 @@ name ~
 
 harness ~
     The agent this config launches. Only `'claude'` exists.
+
+command ~
+    User command that opens this config, `Claude` for the `claude` harness.
+    Configs sharing a command are told apart by name: `:Claude work` opens
+    the config named `work`, and `:Claude` alone opens the first config set
+    up with that command. A command no config uses any more is deleted.
 
 cmd ~
     Command and default flags. `args` from |bodging.open()| and |:Claude|
@@ -123,10 +130,11 @@ ccd_dir ~
 COMMANDS                                                *bodging-commands*
 
                                                                      *:Claude*
-:[mods] Claude [args]
-    Start Claude in a split, with `args` appended to `cmd`. Modifiers work as
-    they do for |:split|: `:vertical Claude`, `:tab Claude`,
-    `:botright Claude`.
+:[mods] Claude [config] [args]
+    Start Claude in a split, with `args` appended to `cmd`. A first argument
+    naming a config that shares the command picks that config. The command
+    name comes from `command`. Modifiers work as they do for |:split|:
+    `:vertical Claude`, `:tab Claude`, `:botright Claude`.
 
 ==============================================================================
 FUNCTIONS                                                    *bodging-api*
@@ -214,7 +222,8 @@ touched({opts})
 ==============================================================================
 EVENTS                                                    *bodging-events*
 
-|User| autocommands. Every `ev.data` carries `session_id` and `bufnr`.
+|User| autocommands. Every `ev.data` carries `session_id`, `bufnr`, and
+`config`, the config name.
 
 ClaudeSessionEnter      a terminal starts or switches to a session; `source`
                         is Claude's SessionStart source when known

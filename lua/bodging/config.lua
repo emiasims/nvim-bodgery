@@ -9,6 +9,8 @@ local M = {}
 --- @field name string key in |bodging.configs|, defaults to `harness`
 --- @field harness string key in |bodging.harnesses|
 --- @field cmd string[] command and default flags
+--- @field command string user command that opens this config, defaults to the capitalized
+---   harness name. Configs sharing a command are picked by name as its first argument.
 --- @field hooks table<string, fun(input: table): table?> hook event name to callback
 --- @field tools table<string, bodging.ToolSpec>
 --- @field execute_code boolean serve the `executeCode` IDE tool
@@ -61,6 +63,7 @@ local on_busy = { 'error', 'interrupt', 'queue', 'prompt' }
 local schema = {
   { 'ccd_dir', 'string' },
   { 'cmd', 'table' },
+  { 'command', 'string' },
   { 'diff', 'table' },
   { 'diff.inline', 'boolean' },
   { 'diff.window', 'function' },

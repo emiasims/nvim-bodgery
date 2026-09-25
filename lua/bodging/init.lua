@@ -181,16 +181,64 @@ function M.subtasks(session_id)
   return harness().subtasks(session_id)
 end
 
+--- @type table<string, string[]> config names by user command, the command's default first
+local commands = {}
+
+--- Points user command `command` at config `name`, and deletes commands no config uses.
+--- @param command string
+--- @param name string
+local function register_command(command, name)
+  for other, names in pairs(commands) do
+    if other ~= command and vim.list_contains(names, name) then
+      table.remove(names, vim.fn.index(names, name) + 1)
+      if #names == 0 then
+        commands[other] = nil
+        vim.api.nvim_del_user_command(other)
+      end
+    end
+  end
+  local names = commands[command] or {}
+  commands[command] = names
+  if not vim.list_contains(names, name) then
+    names[#names + 1] = name
+  end
+
+  vim.api.nvim_create_user_command(command, function(ev)
+    local args, config = ev.fargs, names[1]
+    if args[1] and vim.list_contains(names, args[1]) then
+      config = table.remove(args, 1)
+    end
+    M.open({ config = config, args = args, mods = ev.smods })
+  end, {
+    nargs = '*',
+    complete = function(lead)
+      return vim.tbl_filter(function(n)
+        return vim.startswith(n, lead)
+      end, names)
+    end,
+    desc = 'Start an agent in a split, optionally naming the config',
+  })
+end
+
 --- Creates or replaces the config named `opts.name`. Options are validated on first read,
 --- and the server starts with the first terminal.
 --- @param opts? table see |bodging.Config|
 function M.setup(opts)
   vim.validate('opts', opts, 'table', true)
   opts = opts or {}
-  local name = opts.name or opts.harness or 'claude'
-  options[name] = opts
+  local harness = opts.harness or 'claude'
+  local name = opts.name or harness
+  local command = opts.command or harness:gsub('^%l', string.upper)
+  if type(command) ~= 'string' or not command:match('^%u%w*$') then
+    error(
+      ('bodging: command: expected a name starting with an uppercase letter, got %s'):format(command),
+      0
+    )
+  end
+  options[name] = vim.tbl_extend('force', {}, opts, { name = name, command = command })
   rawset(M.configs, name, nil)
   M.default = M.default or name
+  register_command(command, name)
 
   local group = vim.api.nvim_create_augroup('bodging', { clear = true })
   vim.api.nvim_create_autocmd('VimLeavePre', {
@@ -198,10 +246,6 @@ function M.setup(opts)
     desc = 'Stop the bodging server and remove its lockfile',
     callback = M.stop,
   })
-
-  vim.api.nvim_create_user_command('Claude', function(ev)
-    M.open({ args = ev.fargs, mods = ev.smods })
-  end, { nargs = '*', desc = 'Start Claude in a split' })
 
   vim.api.nvim_create_autocmd('SessionWritePost', {
     group = group,
