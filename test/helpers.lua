@@ -177,6 +177,19 @@ function M.leaked(before)
   return out
 end
 
+--- Stops every Claude terminal's job and the plugin, and returns the handles left open
+--- since `before`.
+--- @param before table<userdata, string> from `handles()`
+--- @return string[]
+function M.stop_plugin(before)
+  for _, term in pairs(require('claude-code.terminal').terminals) do
+    vim.fn.jobstop(term.job)
+    vim.fn.jobwait({ term.job }, 1000)
+  end
+  require('claude-code').stop()
+  return M.leaked(before)
+end
+
 --- @class test.Response
 --- @field status integer
 --- @field headers table<string, string>

@@ -139,6 +139,13 @@ describe('websocket', function()
       h.eq(1003, h.close_code(c:recv()))
       c:wait_eof()
       c:close()
+
+      -- a text frame without FIN starts a fragmented message
+      c = h.ws_connect(server.port, 'secret-token')
+      c:send(string.char(ws.OP.TEXT) .. ws.encode(ws.OP.TEXT, 'part', 'abcd'):sub(2))
+      h.eq(1003, h.close_code(c:recv()))
+      c:wait_eof()
+      c:close()
       h.eq({}, received)
     end)
   end)

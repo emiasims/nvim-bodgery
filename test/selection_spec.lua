@@ -6,6 +6,7 @@ describe('selection', function()
     helpers.clear()
     exec_lua(function()
       _G.h = require('test.helpers')
+      _G.before = h.handles()
       _G.cc = require('claude-code')
       cc.setup({ cmd = h.fake_cmd() })
 
@@ -32,6 +33,13 @@ describe('selection', function()
       function _G.keys(k)
         vim.api.nvim_feedkeys(vim.keycode(k), 'xt', false)
       end
+    end)
+  end)
+
+  after_each(function()
+    exec_lua(function()
+      client:close()
+      h.eq({}, h.stop_plugin(before), 'leaked handles')
     end)
   end)
 

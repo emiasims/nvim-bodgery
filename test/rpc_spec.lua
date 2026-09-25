@@ -10,6 +10,7 @@ describe('json-rpc and mcp', function()
       local ws = require('claude-code.server.ws')
       _G.before = h.handles()
       _G.cancelled = 0
+      _G.resolved = {}
 
       local d = mcp.new({
         name = 'test',
@@ -35,7 +36,9 @@ describe('json-rpc and mcp', function()
       d:on('test/later', function(params)
         return function(resolve)
           vim.defer_fn(function()
-            resolve({ v = params.v })
+            -- errors inside a timer never reach the test, so record them
+            local ok, err = pcall(resolve, { v = params.v })
+            resolved[#resolved + 1] = ok or err
           end, params.ms)
           return function()
             cancelled = cancelled + 1
@@ -179,10 +182,23 @@ describe('json-rpc and mcp', function()
       vim.wait(10)
       c:close()
       h.wait(function()
-        return cancelled == 1
-      end, 'cancel')
-      -- the timer resolves into a closed connection
-      vim.wait(80)
+        return #resolved == 1
+      end, 'resolve after close')
+      h.eq({ 1, true }, { cancelled, resolved[1] })
+
+      local sid = post({ jsonrpc = '2.0', id = 0, method = 'initialize', params = {} }, false).headers['mcp-session-id']
+      local hc = h.connect(server.port)
+      hc:send(h.format_request('POST', '/mcp', {
+        token = 'good',
+        headers = { ['Mcp-Session-Id'] = sid },
+        body = { jsonrpc = '2.0', id = 2, method = 'test/later', params = { v = 'b', ms = 50 } },
+      }))
+      vim.wait(10)
+      hc:close()
+      h.wait(function()
+        return #resolved == 2
+      end, 'resolve after HTTP close')
+      h.eq({ 2, true }, { cancelled, resolved[2] })
     end)
   end)
 

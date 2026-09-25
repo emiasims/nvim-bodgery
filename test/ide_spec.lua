@@ -6,6 +6,7 @@ describe('ide tools', function()
     helpers.clear()
     exec_lua(function()
       _G.h = require('test.helpers')
+      _G.before = h.handles()
       _G.cc = require('claude-code')
       cc.setup({
         cmd = h.fake_cmd(),
@@ -49,6 +50,12 @@ describe('ide tools', function()
         vim.cmd.edit(path)
         return vim.api.nvim_get_current_buf(), path
       end
+    end)
+  end)
+
+  after_each(function()
+    exec_lua(function()
+      h.eq({}, h.stop_plugin(before), 'leaked handles')
     end)
   end)
 
@@ -143,6 +150,7 @@ describe('ide tools', function()
         return list
       end
       h.eq({ 'getDiagnostics' }, names())
+      h.eq(-32602, call('executeCode', { code = 'return 1' }).code)
 
       cc.config.execute_code = true
       h.eq({ 'getDiagnostics', 'executeCode' }, names())

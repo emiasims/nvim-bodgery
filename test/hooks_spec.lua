@@ -6,6 +6,7 @@ describe('hooks', function()
     helpers.clear()
     exec_lua(function()
       _G.h = require('test.helpers')
+      _G.before = h.handles()
       _G.cc = require('claude-code')
       _G.notifications = {}
       vim.notify = function(msg)
@@ -55,11 +56,37 @@ describe('hooks', function()
     end)
   end)
 
+  after_each(function()
+    exec_lua(function()
+      h.eq({}, h.stop_plugin(before), 'leaked handles')
+    end)
+  end)
+
   it('binds the session on SessionStart', function()
     exec_lua(function()
       send('SessionStart-startup')
       h.eq({ { 'ClaudeSessionEnter', { session_id = SID, bufnr = bufnr, source = 'startup' } } }, fired)
       h.eq(SID, require('claude-code.terminal').terminals[bufnr].session_id)
+    end)
+  end)
+
+  it('binds the session through the SessionStart command hook', function()
+    exec_lua(function()
+      local path = vim.fs.joinpath(cc.harness.state.dir, 'settings.json')
+      local settings = vim.json.decode(table.concat(vim.fn.readfile(path), '\n'))
+      local done
+      -- asynchronous, since this Neovim serves the request
+      vim.system({ 'sh', '-c', settings.hooks.SessionStart[1].hooks[1].command }, {
+        stdin = vim.json.encode(h.fixture('SessionStart-startup', { session_id = SID })),
+        env = { CLAUDE_NVIM_TOKEN = token },
+      }, function(res)
+        done = res
+      end)
+      h.wait(function()
+        return done
+      end, 'curl')
+      h.eq({ 0, '{}' }, { done.code, done.stdout })
+      h.eq({ { 'ClaudeSessionEnter', { session_id = SID, bufnr = bufnr, source = 'startup' } } }, fired)
     end)
   end)
 
@@ -196,6 +223,23 @@ describe('hooks', function()
       h.eq({ 200, '{}' }, { res.status, res.body })
       h.eq(1, #notifications)
       assert(notifications[1]:find('broken callback'), notifications[1])
+    end)
+  end)
+
+  -- Neovim reports autocmd errors itself without raising to the caller
+  it('survives a raising User autocmd and still runs the callback', function()
+    exec_lua(function()
+      send('SessionStart-startup')
+      vim.api.nvim_create_autocmd('User', {
+        pattern = 'ClaudeToolUsePre',
+        callback = function()
+          error('broken autocmd')
+        end,
+      })
+      local res = send('PreToolUse-Write')
+      h.eq(200, res.status)
+      h.eq('deny', res.json.hookSpecificOutput.permissionDecision)
+      h.eq({ 'ClaudeToolUsePre', 'ClaudeFilesChanged' }, names('Claude[TF]'))
     end)
   end)
 end)

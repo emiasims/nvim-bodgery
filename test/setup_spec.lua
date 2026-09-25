@@ -25,10 +25,7 @@ local function setup_error(opts)
 end
 
 describe('setup', function()
-  before_each(function()
-    helpers.clear()
-    exec_lua('package.path = ...', package.path)
-  end)
+  before_each(require('test.helpers').clear)
 
   it('leaves one autocmd per event after a second call', function()
     local counts = exec_lua(function()
@@ -41,9 +38,17 @@ describe('setup', function()
       end
       return counts
     end)
-    for event, n in pairs(counts) do
-      eq(1, n, event)
-    end
+    eq({ VimLeavePre = 1, WinLeave = 1, ModeChanged = 1 }, counts)
+  end)
+
+  it('removes the previous lockfile on a second call', function()
+    local locks = exec_lua(function()
+      local cc = require('claude-code')
+      cc.setup()
+      cc.setup()
+      return vim.fn.readdir(vim.env.CLAUDE_CONFIG_DIR .. '/ide')
+    end)
+    eq(1, #locks)
   end)
 
   it('leaves one listening server after a second call', function()
