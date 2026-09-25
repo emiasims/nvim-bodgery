@@ -226,6 +226,48 @@ function M.tools()
       },
       handler = get_diagnostics,
     },
+    {
+      name = 'openDiff',
+      description = 'Show proposed file contents for review, and wait for the user to accept or reject them',
+      input_schema = {
+        type = 'object',
+        properties = {
+          old_file_path = { type = 'string' },
+          new_file_path = { type = 'string' },
+          new_file_contents = { type = 'string' },
+          tab_name = { type = 'string' },
+        },
+        required = { 'old_file_path', 'new_file_path', 'new_file_contents', 'tab_name' },
+      },
+      handler = function(args)
+        return function(resolve)
+          local d = require('claude-code.harness.claude.diff').open(args, resolve)
+          return function()
+            require('claude-code.harness.claude.diff').cancel(d)
+          end
+        end
+      end,
+    },
+    {
+      name = 'close_tab',
+      description = 'Close a diff opened by openDiff',
+      input_schema = {
+        type = 'object',
+        properties = { tab_name = { type = 'string' } },
+        required = { 'tab_name' },
+      },
+      handler = function(args)
+        require('claude-code.harness.claude.diff').close(args.tab_name)
+        return 'TAB_CLOSED'
+      end,
+    },
+    {
+      name = 'closeAllDiffTabs',
+      description = 'Close every diff opened by openDiff',
+      handler = function()
+        return ('CLOSED_%d_DIFF_TABS'):format(require('claude-code.harness.claude.diff').close_all())
+      end,
+    },
   }
   if require('claude-code').config.execute_code then
     tools[#tools + 1] = {

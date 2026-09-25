@@ -4,7 +4,7 @@ Settled design for `claude-code.nvim`. Protocol facts come from reading the Clau
 
 ## Principles
 
-The plugin is a bridge between Claude Code and Neovim, and it stays out of the user's way. A Claude terminal behaves like any other buffer: it goes into windows the way `:edit` and `:split` put buffers there, and the plugin respects the user's options wherever one applies. The plugin never changes windows or tabs except the current window, and only on an explicit call. It favors the smallest mechanism that works, and it is meant to be built on.
+The plugin is a bridge between Claude Code and Neovim, and it stays out of the user's way. A Claude terminal behaves like any other buffer: it goes into windows the way `:edit` and `:split` put buffers there, and the plugin respects the user's options wherever one applies. The plugin never changes windows or tabs except the current window, and only on an explicit call. Diff review is the exception: it shows a proposed edit in a window beside Claude, chosen by `opts.diff.window()`. It favors the smallest mechanism that works, and it is meant to be built on.
 
 ## Scope
 
@@ -58,7 +58,16 @@ User config can return hook decisions (deny a tool, add context) from `opts.hook
 Claude calls these on the editor:
 
 - `getDiagnostics`, with a `uri` before each file edit and without arguments after it. The reply merges `vim.diagnostic` from all sources with treesitter `ERROR` and `MISSING` nodes (source `treesitter`), and covers loaded buffers only. A `uri` for an unloaded file returns an empty list, since Claude sends one before every edit. Claude feeds diagnostics introduced by its edit back to the model.
-- `openDiff`, `close_tab`, `closeAllDiffTabs`. `openDiff` blocks until the user accepts, rejects, or closes the tab. Accepting approves the tool call and may return edited contents, which Claude writes instead of its own. The diff UI is built into the plugin, adapted from an existing implementation (open question).
+- `openDiff`, `close_tab`, `closeAllDiffTabs`. `openDiff` blocks until the user accepts or rejects. Claude reads three replies: `FILE_SAVED` plus contents (accepted, and Claude writes those contents instead of its own), `DIFF_REJECTED`, and `TAB_CLOSED`, which leaves the decision to the terminal prompt. When the user answers in the terminal, Claude calls `close_tab`, and the pending `openDiff` gets `TAB_CLOSED`.
+
+  The review is one buffer holding the proposed contents, in one window. Added lines are highlighted and removed lines show as virtual lines where they were. With `opts.diff.inline` (on by default), a changed line that `linematch` pairs with its old version is highlighted as changed, with inserted characters marked and removed ones shown inline. The user can edit the buffer. `:w` accepts, and deleting or hiding the buffer rejects, so a second diff shown over the first rejects the first. Afterwards the window gets its previous buffer back, or closes if it was opened for the diff.
+
+  `opts.diff.window()` returns the window. The default looks at the current tab:
+
+  - Claude alone: a new vertical split beside it, the one window the plugin opens on its own
+  - one other window: that window
+  - several: the one nearest Claude in `winlayout()`
+  - no Claude window: the current window
 - `executeCode`, served as "run Lua in the user's Neovim" with `{ code }`. It is off by default (`opts.execute_code = true` enables it) and should never go on a permission allowlist, since one approval covers `vim.fn.system`.
 
 The plugin sends Claude:
@@ -104,7 +113,6 @@ The key cannot use `v:this_session`: session managers that `mksession` to a temp
 
 ## Open questions
 
-- Which diff implementation to adapt: claudecode.nvim's `diff.lua` and `diff_inline.lua`, or codecompanion's `diff/`.
 - Whether to adapt claudecode.nvim's `server/` websocket code for the HTTP server.
 - How to map a websocket connection to its terminal. The shared lockfile token can't identify it, so `selection_changed` and `at_mentioned` either go to every connected session or need another signal.
 
@@ -113,6 +121,7 @@ The key cannot use `v:this_session`: session managers that `mksession` to a temp
 The Claude Code binary is at `/opt/homebrew/Caskroom/claude-code@latest/<version>/claude`. Its JavaScript is minified, so verification means searching `strings -n 6` output for literal names and reading the surrounding code:
 
 - `callIdeRpc(` and `g0n(` (minified name, changes per build) for the calls Claude makes to the editor: `openDiff`, `close_tab`, `closeAllDiffTabs`, `getDiagnostics`
+- `"FILE_SAVED"`, `"DIFF_REJECTED"`, and `"TAB_CLOSED"` for how Claude reads an `openDiff` reply
 - `"mcp__ide__executeCode","mcp__ide__getDiagnostics"` for the allowlist of IDE tools shown to the model
 - `method:R("selection_changed")` and `at_mentioned` for the notification formats
 - `opened_file_in_ide` and `selected_lines_in_ide` for how the selection is attached to a prompt
@@ -143,4 +152,3 @@ claudecode.nvim was read at commit `2390c6e` (<https://github.com/coder/claudeco
 
 Its `PROTOCOL.md` lists tools that 2.1.281 never calls, so trust the binary over it.
 
-codecompanion's diff (<https://github.com/olimorris/codecompanion.nvim>, `lua/codecompanion/diff/`) has not been read.

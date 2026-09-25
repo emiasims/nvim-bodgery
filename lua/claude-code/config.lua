@@ -15,6 +15,7 @@ local M = {}
 --- @field resolve? fun(): integer? picks the target terminal when zero or several are shown
 --- @field restore { max_age: number } seconds
 --- @field editor { open: fun(file: string) }
+--- @field diff { window: fun(): integer, inline: boolean } `window` picks where a proposed edit shows, `inline` marks changes within a line
 --- @field ccd_dir string root of ccd's session index
 M.defaults = {
   cmd = { 'claude' },
@@ -28,6 +29,12 @@ M.defaults = {
   editor = {
     open = function(file)
       vim.cmd.split({ file, magic = { file = false } })
+    end,
+  },
+  diff = {
+    inline = true,
+    window = function()
+      return require('claude-code.terminal').pick_window()
     end,
   },
   ccd_dir = vim.fs.normalize('~/Library/Application Support/Claude/claude-code-sessions'),
@@ -51,6 +58,9 @@ local on_busy = { 'error', 'interrupt', 'queue', 'prompt' }
 local schema = {
   { 'ccd_dir', 'string' },
   { 'cmd', 'table' },
+  { 'diff', 'table' },
+  { 'diff.inline', 'boolean' },
+  { 'diff.window', 'function' },
   { 'editor', 'table' },
   { 'editor.open', 'function' },
   { 'execute_code', 'boolean' },

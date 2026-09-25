@@ -186,7 +186,8 @@ describe('json-rpc and mcp', function()
       end, 'resolve after close')
       h.eq({ 1, true }, { cancelled, resolved[1] })
 
-      local sid = post({ jsonrpc = '2.0', id = 0, method = 'initialize', params = {} }, false).headers['mcp-session-id']
+      local sid =
+        post({ jsonrpc = '2.0', id = 0, method = 'initialize', params = {} }, false).headers['mcp-session-id']
       local hc = h.connect(server.port)
       hc:send(h.format_request('POST', '/mcp', {
         token = 'good',

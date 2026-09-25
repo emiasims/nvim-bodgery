@@ -69,4 +69,57 @@ function M.open(opts)
   return bufnr
 end
 
+--- A window in the current tab for showing a file beside Claude. With a Claude window in
+--- the tab, this is the only other window, the one nearest Claude in `winlayout()` when
+--- there are several, or a new vertical split when Claude is alone. Without one, it is the
+--- current window.
+--- @return integer winid
+function M.pick_window()
+  local cur = vim.api.nvim_get_current_win()
+  local paths, order = {}, {}
+  local function walk(node, path)
+    if node[1] == 'leaf' then
+      order[#order + 1] = node[2]
+      paths[node[2]] = path
+      return
+    end
+    for i, child in ipairs(node[2]) do
+      walk(child, vim.list_extend(vim.list_slice(path), { i }))
+    end
+  end
+  walk(vim.fn.winlayout(), {})
+
+  local claude, others = nil, {}
+  for _, win in ipairs(order) do
+    if M.terminals[vim.api.nvim_win_get_buf(win)] then
+      if not claude or win == cur then
+        claude = win
+      end
+    else
+      others[#others + 1] = win
+    end
+  end
+  if not claude then
+    return cur
+  elseif #others == 0 then
+    return vim.api.nvim_open_win(vim.api.nvim_win_get_buf(claude), false, { vertical = true, win = claude })
+  end
+
+  local function distance(a, b)
+    local common = 0
+    while a[common + 1] and a[common + 1] == b[common + 1] do
+      common = common + 1
+    end
+    return #a + #b - 2 * common
+  end
+  local best, best_d
+  for _, win in ipairs(others) do
+    local d = distance(paths[win], paths[claude])
+    if not best_d or d < best_d then
+      best, best_d = win, d
+    end
+  end
+  return best
+end
+
 return M

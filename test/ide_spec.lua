@@ -149,11 +149,12 @@ describe('ide tools', function()
         c:close()
         return list
       end
-      h.eq({ 'getDiagnostics' }, names())
+      local ide_tools = { 'getDiagnostics', 'openDiff', 'close_tab', 'closeAllDiffTabs' }
+      h.eq(ide_tools, names())
       h.eq(-32602, call('executeCode', { code = 'return 1' }).code)
 
       cc.config.execute_code = true
-      h.eq({ 'getDiagnostics', 'executeCode' }, names())
+      h.eq(vim.list_extend(vim.list_slice(ide_tools), { 'executeCode' }), names())
       h.eq('3\n"x"', call('executeCode', { code = 'return 1 + 2, "x"' }).content[1].text)
       h.eq('nil', call('executeCode', { code = 'local _ = 1' }).content[1].text)
       local err = call('executeCode', { code = 'error("bad")' })
@@ -171,7 +172,7 @@ describe('ide tools', function()
         return t.name
       end, c:recv_json().result.tools)
       c:close()
-      h.eq({ 'getDiagnostics' }, ws_names)
+      h.eq({ 'getDiagnostics', 'openDiff', 'close_tab', 'closeAllDiffTabs' }, ws_names)
 
       local token = require('claude-code.terminal').terminals[cc.open()].token
       local function post(body, sid)
