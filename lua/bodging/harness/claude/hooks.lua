@@ -165,7 +165,7 @@ end
 --- Serves `POST /hooks/<Event>` for every registered hook event.
 --- @param server bodging.http.Server
 function M.register(server)
-  for _, event in ipairs(require('bodging.config').hook_events) do
+  for _, event in ipairs(require('bodging.harness.claude.config').hook_events) do
     server:route({
       method = 'POST',
       path = '/hooks/' .. event,

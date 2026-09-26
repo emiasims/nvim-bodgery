@@ -38,7 +38,7 @@ local TOOL_MATCHER = 'Read|Edit|Write|NotebookEdit|Bash'
 --- @return table settings Claude settings registering the plugin's hooks
 function M.settings(port)
   local hooks = {}
-  for _, event in ipairs(require('bodging.config').hook_events) do
+  for _, event in ipairs(require('bodging.harness.claude.config').hook_events) do
     local hook
     if event == 'SessionStart' then
       -- Claude skips HTTP hooks for SessionStart, so pipe the input to the same endpoint

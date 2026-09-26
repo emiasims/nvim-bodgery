@@ -5,29 +5,21 @@ local M = {}
 --- @field input_schema? table
 --- @field handler fun(args: table, ctx: { session_id: string?, bufnr: integer }): any
 
---- @class bodging.Config
+--- Core options, plus the options of the harness module `harness.<name>.config`.
+--- @class bodging.Config: bodging.claude.Config
 --- @field name string key in |bodging.configs|, defaults to `harness`
 --- @field harness string key in |bodging.harnesses|
 --- @field cmd string[] command and default flags
 --- @field command string user command that opens this config, defaults to the capitalized
 ---   harness name. Configs sharing a command are picked by name as its first argument.
---- @field hooks table<string, fun(input: table): table?> hook event name to callback
 --- @field tools table<string, bodging.ToolSpec>
---- @field execute_code boolean serve the `executeCode` IDE tool
---- @field selection { auto: boolean } send `selection_changed` automatically
 --- @field on_busy 'error'|'interrupt'|'queue'|'prompt'
 --- @field resolve? fun(): integer? picks the target terminal when zero or several are shown
 --- @field restore { max_age: number } seconds
 --- @field editor { open: fun(file: string) }
---- @field diff { window: fun(): integer, inline: boolean } `window` picks where a proposed edit shows, `inline` marks changes within a line
---- @field ccd_dir string root of ccd's session index
 M.defaults = {
   harness = 'claude',
-  cmd = { 'claude' },
-  hooks = {},
   tools = {},
-  execute_code = false,
-  selection = { auto = true },
   on_busy = 'error',
   resolve = nil,
   restore = { max_age = 30 * 24 * 60 * 60 },
@@ -36,49 +28,22 @@ M.defaults = {
       vim.cmd.split({ file, magic = { file = false } })
     end,
   },
-  diff = {
-    inline = true,
-    window = function()
-      return require('bodging.terminal').pick_window()
-    end,
-  },
-  ccd_dir = vim.fs.normalize('~/Library/Application Support/Claude/claude-code-sessions'),
-}
-
-M.hook_events = {
-  'SessionStart',
-  'PreToolUse',
-  'PostToolUse',
-  'SubagentStart',
-  'SubagentStop',
-  'UserPromptSubmit',
-  'Stop',
-  'Notification',
-  'SessionEnd',
 }
 
 local on_busy = { 'error', 'interrupt', 'queue', 'prompt' }
 
 -- sorted so a parent table is checked before its fields
 local schema = {
-  { 'ccd_dir', 'string' },
   { 'cmd', 'table' },
   { 'command', 'string' },
-  { 'diff', 'table' },
-  { 'diff.inline', 'boolean' },
-  { 'diff.window', 'function' },
   { 'editor', 'table' },
   { 'editor.open', 'function' },
-  { 'execute_code', 'boolean' },
   { 'harness', 'string' },
-  { 'hooks', 'table' },
   { 'name', 'string' },
   { 'on_busy', 'string' },
   { 'resolve', 'function', optional = true },
   { 'restore', 'table' },
   { 'restore.max_age', 'number' },
-  { 'selection', 'table' },
-  { 'selection.auto', 'boolean' },
   { 'tools', 'table' },
 }
 
@@ -93,16 +58,19 @@ local function expect(name, value, expected, optional)
 end
 
 --- @param opts table
-local function validate(opts)
+--- @param harness table the harness's config module
+local function validate(opts, harness)
   local known, nested = {}, {}
-  for _, entry in ipairs(schema) do
-    local name, expected = entry[1], entry[2]
-    known[name] = true
-    local path = vim.split(name, '.', { plain = true })
-    if #path > 1 then
-      nested[path[1]] = true
+  for _, entries in ipairs({ schema, harness.schema }) do
+    for _, entry in ipairs(entries) do
+      local name, expected = entry[1], entry[2]
+      known[name] = true
+      local path = vim.split(name, '.', { plain = true })
+      if #path > 1 then
+        nested[path[1]] = true
+      end
+      expect(name, vim.tbl_get(opts, unpack(path)), expected, entry.optional)
     end
-    expect(name, vim.tbl_get(opts, unpack(path)), expected, entry.optional)
   end
 
   for key, value in pairs(opts) do
@@ -118,10 +86,6 @@ local function validate(opts)
     end
   end
 
-  if not require('bodging').harnesses._submodules[opts.harness] then
-    fail('harness: unknown harness %q', opts.harness)
-  end
-
   if #opts.cmd == 0 then
     fail('cmd: expected a non-empty list')
   end
@@ -133,13 +97,6 @@ local function validate(opts)
     fail('on_busy: expected one of %s, got %q', table.concat(on_busy, ', '), opts.on_busy)
   end
 
-  for event, callback in pairs(opts.hooks) do
-    if not vim.list_contains(M.hook_events, event) then
-      fail('hooks.%s: unknown hook event', event)
-    end
-    expect('hooks.' .. event, callback, 'function')
-  end
-
   for name, spec in pairs(opts.tools) do
     local prefix = 'tools.' .. name
     expect(prefix, spec, 'table')
@@ -147,19 +104,28 @@ local function validate(opts)
     expect(prefix .. '.input_schema', spec.input_schema, 'table', true)
     expect(prefix .. '.handler', spec.handler, 'function')
   end
+
+  harness.validate(opts, fail, expect)
 end
 
---- Validates `opts` and merges it over the defaults.
+--- Validates `opts` and merges it over the core and harness defaults.
 --- @param opts? table
 --- @return bodging.Config
 function M.resolve(opts)
   opts = opts or {}
   expect('opts', opts, 'table')
-  local merged = vim.tbl_deep_extend('force', {}, M.defaults, opts)
+  local name = opts.harness or M.defaults.harness
+  expect('harness', name, 'string')
+  if not require('bodging').harnesses._submodules[name] then
+    fail('harness: unknown harness %q', name)
+  end
+  local harness = require(('bodging.harness.%s.config'):format(name))
+
+  local merged = vim.tbl_deep_extend('force', {}, M.defaults, harness.defaults, opts)
   -- lists replace the default instead of merging by index
-  merged.cmd = opts.cmd or M.defaults.cmd
+  merged.cmd = opts.cmd or harness.defaults.cmd
   merged.name = opts.name or merged.harness
-  validate(merged)
+  validate(merged, harness)
   return merged
 end
 
