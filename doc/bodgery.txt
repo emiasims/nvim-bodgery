@@ -183,6 +183,17 @@ toggle([{bufnr} [, {config}]])
     tab: close its window, or show the alternate buffer in it when it is the
     tab's only window. Otherwise show it in the window from `show.window`
     and enter it. When the chain reaches `new`, start {config}'s agent there.
+    A {bufnr} becomes the terminal of the current scope (|bodgery-records|).
+
+                                                         *bodgery.show()*
+show([{bufnr} [, {config}]])
+    As |bodgery.toggle()|, entering the target terminal where it already
+    shows in the current tab.
+
+                                                         *bodgery.hide()*
+hide([{bufnr} [, {config}]])
+    As |bodgery.toggle()|, doing nothing unless the target terminal shows in
+    the current tab.
 
                                                          *bodgery.tool()*
 tool({name}, {spec})
@@ -235,23 +246,39 @@ Functions acting on "the target terminal" use {bufnr} when given, then the
 terminal in the current window, then the first match of {config}'s `active`
 list (the default list without {config}). Entries are functions
 `fn(ctx, config): bufnr?` or these names:
-  `window`   the terminal last opened or entered from the current window
+  `window`   the terminal recorded for the current window
   `buffer`   the same for the current buffer
   `tab`      the same for the current tab
-  `global`   the terminal last opened or entered
+  `global`   the first terminal opened while none was open
   `project`  the last used terminal whose working directory has the same
              root as the current buffer (`root_markers`)
   `pick`     ask through |vim.ui.select()|, skipped with no terminals
   `new`      start a terminal from {config}
   `error`    raise
+
+                                                         *bodgery-records*
 The records behind the first four are `w:`, `b:`, `t:`, and `g:bodgery_term`.
+Moving between windows changes none of them. They change when:
+  - a terminal opens: the first one fills `g:bodgery_term`, and later ones
+    fill the record of the last of `window`, `buffer`, and `tab` in
+    `active`, the "current scope"
+  - `global`, `project`, `pick`, or a function finds a terminal after an
+    empty scoped record: that terminal fills the last such record
+  - |bodgery.toggle()|, |bodgery.show()|, or the terminal picker is given a
+    terminal: it fills the current scope
+  - a window showing a terminal switches to another terminal: every record in
+    the tab that held the old one takes the new one, or the current scope
+    does when none did
 
 ==============================================================================
 PICKERS                                                  *bodgery-pickers*
 
-`require('bodgery.select')` offers three pickers through
+`require('bodgery.select')` offers four pickers through
 |vim.ui.select()|. Each takes an optional `on_choice(item)` that replaces the
 default action.
+
+terminals([{opts} [, {config}]])
+    Agent terminals. Choosing one shows it with |bodgery.show()|.
 
 sessions({config} [, {opts}])
     Unarchived sessions started in `opts.cwd` (default: |getcwd()|). Choosing

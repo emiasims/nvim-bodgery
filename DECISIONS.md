@@ -101,9 +101,14 @@ Without a ccd title, `title` falls back, in order, to the last `custom-title` re
 
 `resume(id, bufnr?, config?)` has the adapter resume session `id` in the target terminal. Claude's adapter types `/resume <id>`. When the `active` chain reaches `new`, it opens a new terminal in the current window with the adapter's resume arguments, leaving any other tab that shows an old terminal untouched. Typing into a terminal goes through `terminal.submit`, where `on_busy = 'error' | 'interrupt' | 'queue' | 'prompt'` decides what happens mid-turn.
 
-`toggle(bufnr?, config?)` hides the target terminal when it shows in the current tab (closing its window, or showing the alternate buffer when it is the tab's only window) and otherwise shows it in the window `show.window` returns.
+`toggle(bufnr?, config?)` hides the target terminal when it shows in the current tab (closing its window, or showing the alternate buffer when it is the tab's only window) and otherwise shows it in the window `show.window` returns. `show` and `hide` do one half each, and `select.terminals()` picks a terminal and shows it.
 
-Without `bufnr`, the target is the current window's terminal, else the first match of the config's `active` list, which defaults to `{ 'window', 'tab', 'global', 'new' }`. Opening or entering a terminal records it in `w:`, `b:`, and `t:bodgery_term` of the window it was entered from, and in `g:bodgery_term`.
+Without `bufnr`, the target is the current window's terminal, else the first match of the config's `active` list, which defaults to `{ 'window', 'tab', 'global', 'new' }`. The records behind `window`, `buffer`, `tab`, and `global` are `w:`, `b:`, `t:`, and `g:bodgery_term`. Toggling goes to the most recently chosen terminal that makes sense where the user is. Moving between windows never changes a record, since glancing at a terminal is not choosing it. Records change only on these events:
+
+- Opening a terminal: the first one fills `g:`, later ones fill the current scope (the last of `window`, `buffer`, `tab` in `active`, so `t:` by default).
+- The chain finding a terminal through `global`, `project`, `pick`, or a function after an empty scoped record: the last empty scoped record takes it, so a tab that falls through to `g:` keeps that terminal from then on. A hit on a scoped record writes nothing.
+- An explicit choice (`toggle(b)`, `show(b)`, the picker): the current scope takes it.
+- A window showing terminal `a` switching to terminal `b` (`BufLeave` and `BufEnter` in the same window): every record in the tab that held `a` (`t:`, and `w:`/`b:` of its windows) takes `b`, or the current scope does when none did. A record pointing at another terminal is left alone, so a swap in a pinned window does not retarget the rest of the tab. `g:` and other tabs are untouched.
 
 ## Session restore
 

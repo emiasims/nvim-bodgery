@@ -68,6 +68,26 @@ function M.sessions(config, opts)
   end)
 end
 
+--- Picks an agent terminal and shows it with |bodgery.show()|, making it the current
+--- scope's terminal.
+--- @param opts? bodgery.PickOpts
+--- @param config? bodgery.ConfigArg
+function M.terminals(opts, config)
+  opts = opts or {}
+  local terminal = require('bodgery.terminal')
+  local terms = vim.tbl_values(terminal.terminals)
+  if #terms == 0 then
+    return vim.notify('bodgery: no agent terminals')
+  end
+  terminal.pick(terms, function(term)
+    if opts.on_choice then
+      opts.on_choice(term)
+    else
+      require('bodgery').show(term.bufnr, config)
+    end
+  end)
+end
+
 --- Picks a subagent or background command of `opts.session_id` (default: the target
 --- terminal's session) and opens its transcript or output.
 --- @param opts? bodgery.PickOpts|{ session_id?: string }

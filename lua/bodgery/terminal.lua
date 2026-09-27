@@ -48,60 +48,103 @@ function M.context(win)
   return { win = win, buf = vim.api.nvim_win_get_buf(win), tab = vim.api.nvim_win_get_tabpage(win) }
 end
 
---- Makes `term` the terminal of `ctx`'s window, buffer, and tab, and the last one used.
+--- Variables holding the records of the `window`, `buffer`, and `tab` resolvers, nil when
+--- the scope no longer exists.
+--- @type table<string, fun(ctx: bodgery.Context): table?>
+local scopes = {
+  window = function(ctx)
+    return vim.api.nvim_win_is_valid(ctx.win) and vim.w[ctx.win] or nil
+  end,
+  buffer = function(ctx)
+    return vim.api.nvim_buf_is_valid(ctx.buf) and vim.b[ctx.buf] or nil
+  end,
+  tab = function(ctx)
+    return vim.api.nvim_tabpage_is_valid(ctx.tab) and vim.t[ctx.tab] or nil
+  end,
+}
+
+--- @param bufnr integer?
+--- @return integer?
+local function live(bufnr)
+  return bufnr and M.terminals[bufnr] and bufnr
+end
+
+--- The last `window`, `buffer`, or `tab` resolver in `config.active`.
+--- @param config? bodgery.Config
+--- @return string?
+local function nearest(config)
+  local found
+  for _, resolver in ipairs((config or require('bodgery.config').defaults).active) do
+    if scopes[resolver] then
+      found = resolver --[[@as string]]
+    end
+  end
+  return found
+end
+
+--- Makes `term` the global terminal while there is none, and otherwise the terminal of
+--- `ctx`'s nearest scope.
 --- @param term bodgery.Terminal
 --- @param ctx bodgery.Context
-local function record(term, ctx)
+--- @param config? bodgery.Config
+function M.choose(term, ctx, config)
   term.entered = vim.uv.hrtime()
-  vim.w[ctx.win].bodgery_term = term.bufnr
-  if vim.api.nvim_buf_is_valid(ctx.buf) then
-    vim.b[ctx.buf].bodgery_term = term.bufnr
+  local scope = live(vim.g.bodgery_term) and nearest(config or term.config)
+  local vars = scope and scopes[scope](ctx)
+  if vars then
+    vars.bodgery_term = term.bufnr
+  else
+    vim.g.bodgery_term = term.bufnr
   end
-  vim.t[ctx.tab].bodgery_term = term.bufnr
-  vim.g.bodgery_term = term.bufnr
+end
+
+--- Points each record in `ctx`'s tab that held `old` at `new`, or `ctx`'s nearest scope
+--- when none did.
+--- @param old bodgery.Terminal
+--- @param new bodgery.Terminal
+--- @param ctx bodgery.Context
+local function follow(old, new, ctx)
+  local records = { vim.t[ctx.tab] }
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(ctx.tab)) do
+    records[#records + 1] = vim.w[win]
+    records[#records + 1] = vim.b[vim.api.nvim_win_get_buf(win)]
+  end
+  local moved = false
+  for _, vars in ipairs(records) do
+    if vars.bodgery_term == old.bufnr then
+      vars.bodgery_term = new.bufnr
+      moved = true
+    end
+  end
+  if moved then
+    new.entered = vim.uv.hrtime()
+  else
+    M.choose(new, ctx)
+  end
 end
 
 local group = vim.api.nvim_create_augroup('bodgery.terminal', { clear = true })
 
---- @type integer? the window WinLeave left
+--- @type { win: integer, term: bodgery.Terminal }? the terminal BufLeave left, and its window
 local left
---- @type boolean the BufEnter that follows WinEnter belongs to the window switch
-local switching = false
 
-vim.api.nvim_create_autocmd('WinLeave', {
+vim.api.nvim_create_autocmd('BufLeave', {
   group = group,
-  callback = function()
-    left = vim.api.nvim_get_current_win()
-  end,
-})
-
-vim.api.nvim_create_autocmd('WinEnter', {
-  group = group,
-  desc = 'Record the window a terminal was entered from',
-  callback = function()
-    switching = true
-    vim.schedule(function()
-      switching = false
-    end)
-    local term = M.terminals[vim.api.nvim_get_current_buf()]
-    if term and left and left ~= vim.api.nvim_get_current_win() and vim.api.nvim_win_is_valid(left) then
-      record(term, M.context(left))
-    end
+  callback = function(ev)
+    left = M.terminals[ev.buf] and { win = vim.api.nvim_get_current_win(), term = M.terminals[ev.buf] }
   end,
 })
 
 vim.api.nvim_create_autocmd('BufEnter', {
   group = group,
-  desc = 'Record the window and buffer a terminal replaced',
+  desc = 'Move the records of a terminal replaced by another in the same window',
   callback = function(ev)
-    local term = M.terminals[ev.buf]
-    if not term or switching then
-      return
+    local new, old = M.terminals[ev.buf], left
+    left = nil
+    -- leaving one window for another fires BufLeave in the old window
+    if new and old and old.term ~= new and old.win == vim.api.nvim_get_current_win() then
+      follow(old.term, new, M.context())
     end
-    local ctx = M.context()
-    local alt = vim.fn.bufnr('#')
-    ctx.buf = alt > 0 and alt or ctx.buf
-    record(term, ctx)
   end,
 })
 
@@ -149,7 +192,7 @@ function M.open(config, opts)
   local term = { bufnr = bufnr, token = token, job = job, cwd = cwd, config = config, harness = harness }
   M.terminals[bufnr] = term
   by_token[token] = term
-  record(term, origin)
+  M.choose(term, origin)
   vim.api.nvim_create_autocmd('BufWipeout', {
     buffer = bufnr,
     once = true,
@@ -225,23 +268,8 @@ function M.submit(term, text)
   end
 end
 
---- @param bufnr integer?
---- @return integer?
-local function live(bufnr)
-  return bufnr and M.terminals[bufnr] and bufnr
-end
-
 --- @type table<string, fun(ctx: bodgery.Context, config?: bodgery.Config): integer?>
 M.resolvers = {
-  window = function(ctx)
-    return live(vim.w[ctx.win].bodgery_term)
-  end,
-  buffer = function(ctx)
-    return live(vim.b[ctx.buf].bodgery_term)
-  end,
-  tab = function(ctx)
-    return live(vim.t[ctx.tab].bodgery_term)
-  end,
   global = function()
     return live(vim.g.bodgery_term)
   end,
@@ -265,10 +293,17 @@ M.resolvers = {
     return best
   end,
 }
+for name, vars in pairs(scopes) do
+  M.resolvers[name] = function(ctx)
+    local v = vars(ctx)
+    return v and live(v.bodgery_term)
+  end
+end
 
+--- Asks through |vim.ui.select()| which of `terms` to call `fn` with.
 --- @param terms bodgery.Terminal[]
 --- @param fn fun(term: bodgery.Terminal)
-local function pick(terms, fn)
+function M.pick(terms, fn)
   table.sort(terms, function(a, b)
     return a.bufnr < b.bufnr
   end)
@@ -287,7 +322,8 @@ end
 
 --- Calls `fn` with the terminal a call acts on: `bufnr`'s when given, else the current
 --- window's, else the first match of `config.active` (the core default without `config`).
---- `fn` gets nil when the chain reaches `new`.
+--- `fn` gets nil when the chain reaches `new`. A terminal found by another resolver after
+--- an empty `window`, `buffer`, or `tab` record fills the last such record.
 --- @param bufnr? integer
 --- @param config? bodgery.Config
 --- @param fn fun(term?: bodgery.Terminal)
@@ -299,6 +335,15 @@ function M.target(bufnr, config, fn)
   if M.terminals[ctx.buf] then
     return fn(M.terminals[ctx.buf])
   end
+  --- @type string? the last scoped resolver that came up empty
+  local passed
+  local function claim(term)
+    local vars = passed and scopes[passed](ctx)
+    if vars then
+      vars.bodgery_term = term.bufnr
+    end
+    fn(term)
+  end
   for _, resolver in ipairs((config or require('bodgery.config').defaults).active) do
     if resolver == 'new' then
       return fn(nil)
@@ -307,12 +352,16 @@ function M.target(bufnr, config, fn)
     elseif resolver == 'pick' then
       local terms = vim.tbl_values(M.terminals)
       if #terms > 0 then
-        return pick(terms, fn)
+        return M.pick(terms, claim)
       end
     else
       local found = live((M.resolvers[resolver] or resolver)(ctx, config))
-      if found then
+      if found and scopes[resolver] then
         return fn(M.terminals[found])
+      elseif found then
+        return claim(M.terminals[found])
+      elseif scopes[resolver] then
+        passed = resolver --[[@as string]]
       end
     end
   end

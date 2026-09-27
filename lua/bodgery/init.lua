@@ -75,6 +75,48 @@ function M.open(config, opts)
   return M.terminal.open(M.config.get(config), opts)
 end
 
+--- Calls `fn` with the target terminal, making a `bufnr` the terminal of the current scope.
+--- @param bufnr? integer
+--- @param config? bodgery.Config
+--- @param fn fun(term?: bodgery.Terminal)
+local function chosen(bufnr, config, fn)
+  local ctx = M.terminal.context()
+  M.terminal.target(bufnr, config, function(term)
+    if bufnr and term then
+      M.terminal.choose(term, ctx, config)
+    end
+    fn(term)
+  end)
+end
+
+--- Enters the target terminal where it shows in the current tab, and otherwise shows it in
+--- the window `show.window` picks, or starts one there when `config.active` reaches `new`.
+--- @param bufnr? integer
+--- @param config? bodgery.ConfigArg
+function M.show(bufnr, config)
+  local c = get(config)
+  chosen(bufnr, c, function(term)
+    local win = term and M.terminal.shown(term.bufnr)
+    if win then
+      vim.api.nvim_set_current_win(win)
+    else
+      M.terminal.show(term, c)
+    end
+  end)
+end
+
+--- Hides the target terminal where it shows in the current tab.
+--- @param bufnr? integer
+--- @param config? bodgery.ConfigArg
+function M.hide(bufnr, config)
+  M.terminal.target(bufnr, get(config), function(term)
+    local win = term and M.terminal.shown(term.bufnr)
+    if win then
+      M.terminal.hide(win)
+    end
+  end)
+end
+
 --- Hides the target terminal where it shows in the current tab, and otherwise shows it in
 --- the window `show.window` picks. The current window's terminal is always the target,
 --- and without one `config.active` picks it.
@@ -82,7 +124,7 @@ end
 --- @param config? bodgery.ConfigArg
 function M.toggle(bufnr, config)
   local c = get(config)
-  M.terminal.target(bufnr, c, function(term)
+  chosen(bufnr, c, function(term)
     local win = term and M.terminal.shown(term.bufnr)
     if win then
       M.terminal.hide(win)
