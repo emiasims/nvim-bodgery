@@ -3,6 +3,7 @@
 ## API (`lua/bodging/init.lua`)
 
 - `tool`: move out of init, which holds only the user-facing API (functions keymaps and autocmds call). It only forwards to `M.tools.register`.
+- Pick one argument order for every function. `open(config, opts?)` and `sessions(config, filter?)` put the config first, `touched(id, config)`, `resume(id, bufnr?, config?)`, `toggle(bufnr?, config?)` put it last, and the pickers mix both.
 - Cookbook recipes: one global CLI, one CLI per tab, a harness tab (chat list left, chat center, toggleable files/changes/general panels right).
 
 ## Other
