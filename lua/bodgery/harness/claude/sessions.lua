@@ -149,6 +149,107 @@ local function read_titles(path)
   return out
 end
 
+--- Bumped when the shape of a cache entry changes, which discards the cache on disk.
+local CACHE_VERSION = 1
+
+--- What was read from each transcript and ccd record, keyed by path and valid while the
+--- file's stamp matches.
+--- @class bodgery.claude.Cache
+--- @field version integer
+--- @field transcripts table<string, { stamp: string, head?: true, cwd?: string, prompt?: string, titles?: table<string, string> }>
+--- @field ccd table<string, { stamp: string, id?: string, title?: string, archived?: boolean }>
+
+--- @type bodgery.claude.Cache?
+local cache
+local dirty = false
+
+--- @return string
+local function cache_path()
+  return vim.fs.joinpath(vim.fn.stdpath('cache'), 'bodgery', 'claude-sessions.mpack')
+end
+
+--- @return bodgery.claude.Cache
+local function load_cache()
+  if not cache then
+    local f = io.open(cache_path(), 'rb')
+    local ok, data = false, nil
+    if f then
+      ok, data = pcall(vim.mpack.decode, f:read('*a'))
+      f:close()
+    end
+    cache = ok and type(data) == 'table' and data.version == CACHE_VERSION and data
+      or { version = CACHE_VERSION, transcripts = {}, ccd = {} }
+  end
+  return cache
+end
+
+local function save_cache()
+  if not dirty then
+    return
+  end
+  dirty = false
+  local path = cache_path()
+  vim.fn.mkdir(vim.fs.dirname(path), 'p')
+  -- another Neovim reading the cache mid-write sees the old file, never a partial one
+  local tmp = ('%s.%d'):format(path, vim.fn.getpid())
+  local f = io.open(tmp, 'wb')
+  if f then
+    f:write(vim.mpack.encode(cache))
+    f:close()
+    vim.uv.fs_rename(tmp, path)
+  end
+end
+
+--- Saves the cache once the caller yields, since callers may stop iterating early.
+local function touch_cache()
+  if not dirty then
+    dirty = true
+    vim.schedule(save_cache)
+  end
+end
+
+--- @param stat uv.fs_stat.result
+--- @return string
+local function stamp(stat)
+  return ('%d.%d:%d'):format(stat.mtime.sec, stat.mtime.nsec, stat.size)
+end
+
+--- Drops entries under `root` missing from `seen`.
+--- @param entries table<string, table>
+--- @param root string
+--- @param seen table<string, true>
+local function prune(entries, root, seen)
+  for path in pairs(entries) do
+    if not seen[path] and vim.startswith(path, root .. '/') then
+      entries[path] = nil
+      touch_cache()
+    end
+  end
+end
+
+--- The cache entry for `file`, reading the transcript's head or tail when requested and
+--- not yet cached.
+--- @param file { path: string, stamp: string }
+--- @param head boolean?
+--- @param tail boolean?
+local function transcript_meta(file, head, tail)
+  local entries = load_cache().transcripts
+  local e = entries[file.path]
+  if not e or e.stamp ~= file.stamp then
+    e = { stamp = file.stamp }
+    entries[file.path] = e
+  end
+  if head and not e.head then
+    e.head, e.cwd, e.prompt = true, read_head(file.path)
+    touch_cache()
+  end
+  if tail and not e.titles then
+    e.titles = read_titles(file.path)
+    touch_cache()
+  end
+  return e
+end
+
 --- Claude's project directory name for `cwd`.
 --- @param cwd string
 --- @return string
@@ -163,7 +264,7 @@ end
 
 --- Transcripts with their modification time, newest first.
 --- @param cwd? string
---- @return { id: string, path: string, mtime: integer }[]
+--- @return { id: string, path: string, mtime: integer, stamp: string }[]
 local function transcripts(cwd)
   local root = projects_dir()
   local dirs = {}
@@ -182,9 +283,17 @@ local function transcripts(cwd)
       local id = kind == 'file' and name:match('^(.+)%.jsonl$')
       local stat = id and vim.uv.fs_stat(vim.fs.joinpath(dir, name))
       if stat then
-        out[#out + 1] = { id = id, path = vim.fs.joinpath(dir, name), mtime = stat.mtime.sec }
+        local path = vim.fs.joinpath(dir, name)
+        out[#out + 1] = { id = id, path = path, mtime = stat.mtime.sec, stamp = stamp(stat) }
       end
     end
+  end
+  if not cwd then
+    local seen = {}
+    for _, file in ipairs(out) do
+      seen[file.path] = true
+    end
+    prune(load_cache().transcripts, root, seen)
   end
   table.sort(out, function(a, b)
     return a.mtime > b.mtime
@@ -194,21 +303,37 @@ end
 
 --- ccd's session records keyed by Claude's session id.
 --- @param root string
---- @return table<string, { title: string?, isArchived: boolean? }>
+--- @return table<string, { title: string?, archived: boolean? }>
 local function ccd_index(root)
-  local out = {}
+  local entries = load_cache().ccd
+  local out, seen = {}, {}
   for name, kind in vim.fs.dir(root, { depth = 3 }) do
-    if kind == 'file' and vim.fs.basename(name):match('^local_.*%.json$') then
-      local f = io.open(vim.fs.joinpath(root, name), 'rb')
-      local rec = f and decode(f:read('*a'))
-      if f then
-        f:close()
+    local path = vim.fs.joinpath(root, name)
+    local stat = kind == 'file' and vim.fs.basename(name):match('^local_.*%.json$') and vim.uv.fs_stat(path)
+    if stat then
+      seen[path] = true
+      local e = entries[path]
+      if not e or e.stamp ~= stamp(stat) then
+        local f = io.open(path, 'rb')
+        local rec = f and decode(f:read('*a')) or {}
+        if f then
+          f:close()
+        end
+        e = {
+          stamp = stamp(stat),
+          id = type(rec.cliSessionId) == 'string' and rec.cliSessionId or nil,
+          title = type(rec.title) == 'string' and rec.title or nil,
+          archived = rec.isArchived == true,
+        }
+        entries[path] = e
+        touch_cache()
       end
-      if rec and type(rec.cliSessionId) == 'string' then
-        out[rec.cliSessionId] = rec
+      if e.id then
+        out[e.id] = e
       end
     end
   end
+  prune(entries, root, seen)
   return out
 end
 
@@ -265,15 +390,14 @@ function M.sessions(filter, config)
       i = i + 1
       local file = files[i]
       if not file then
+        save_cache()
         return nil
       end
       local index = ccd[file.id] or {}
-      local archived = index.isArchived == true
+      local archived = index.archived == true
       local s = { id = file.id, last_activity = file.mtime }
-      local head_cwd, prompt
-      if want.cwd or want.title or cwd then
-        head_cwd, prompt = read_head(file.path)
-      end
+      local head = (want.cwd or want.title or cwd) and transcript_meta(file, true) or {}
+      local head_cwd, prompt = head.cwd, head.prompt
       -- different directories can share a slug
       if (filter.archived == nil or filter.archived == archived) and (not cwd or head_cwd == cwd) then
         if want.cwd then
@@ -289,7 +413,7 @@ function M.sessions(filter, config)
           s.bufnr = terms[file.id]
         end
         if want.title then
-          local titles = type(index.title) == 'string' and {} or read_titles(file.path)
+          local titles = type(index.title) == 'string' and {} or transcript_meta(file, false, true).titles
           s.title = type(index.title) == 'string' and index.title
             or titles['custom-title']
             or titles['agent-name']

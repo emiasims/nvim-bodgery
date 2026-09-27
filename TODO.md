@@ -9,6 +9,7 @@
 
 ## Other
 
+- `ccd_dir` defaults to the macOS path (`~/Library/Application Support/Claude/claude-code-sessions`). Find where Claude Desktop keeps its session records on Windows and Linux and default to those.
 - Rename `harness` to `cli`, as sidekick.nvim does.
 - Compare sidekick.nvim features, starting with its autoread setup.
 - Type annotations everywhere, fix diagnostics.

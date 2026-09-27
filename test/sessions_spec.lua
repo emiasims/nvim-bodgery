@@ -2,8 +2,10 @@ local helpers = require('test.helpers')
 local exec_lua = require('nvim-test.helpers').exec_lua
 
 describe('sessions', function()
+  local tmp
+
   before_each(function()
-    helpers.clear()
+    tmp = helpers.clear()
     exec_lua(function()
       _G.h = require('test.helpers')
       _G.before = h.handles()
@@ -141,6 +143,55 @@ describe('sessions', function()
       assert(
         vim.list_contains(opened, vim.env.CLAUDE_CONFIG_DIR .. '/projects/-home-test-other/s-other.jsonl')
       )
+    end)
+  end)
+
+  it('rereads only transcripts that changed, across restarts', function()
+    local function opens()
+      exec_lua(function()
+        function _G.titles_and_opens()
+          local opened, open = {}, io.open
+          io.open = function(path, ...)
+            if path:find('%.jsonl?$') then
+              opened[#opened + 1] = vim.fs.basename(path)
+            end
+            return open(path, ...)
+          end
+          local titles = {}
+          for s in cc.sessions('claude') do
+            titles[s.id] = s.title
+          end
+          io.open = open
+          return titles, opened
+        end
+      end)
+    end
+    opens()
+    exec_lua(function()
+      local _, opened = titles_and_opens()
+      assert(#opened > 0)
+    end)
+
+    helpers.clear(tmp)
+    exec_lua(function()
+      _G.h = require('test.helpers')
+      _G.before = h.handles()
+      _G.cc = require('bodgery')
+      cc.setup({ cmd = h.fake_cmd(), ccd_dir = h.root .. '/test/fixtures/ccd' })
+    end)
+    opens()
+    exec_lua(function()
+      local _, opened = titles_and_opens()
+      h.eq({}, opened)
+
+      local path = vim.env.CLAUDE_CONFIG_DIR .. '/projects/-home-test-proj/s-prompt.jsonl'
+      local f = assert(io.open(path, 'a'))
+      f:write(vim.json.encode({ type = 'custom-title', customTitle = 'Renamed' }), '\n')
+      f:close()
+      local titles
+      titles, opened = titles_and_opens()
+      h.eq({ 's-prompt.jsonl' }, vim.fn.uniq(opened))
+      h.eq('Renamed', titles['s-prompt'])
     end)
   end)
 
