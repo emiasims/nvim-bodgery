@@ -7,7 +7,7 @@ describe('selection', function()
     exec_lua(function()
       _G.h = require('test.helpers')
       _G.before = h.handles()
-      _G.cc = require('bodging')
+      _G.cc = require('bodgery')
       cc.setup({ cmd = h.fake_cmd() })
       cc.start('claude')
 

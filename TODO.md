@@ -1,6 +1,6 @@
 # TODO
 
-## API (`lua/bodging/init.lua`)
+## API (`lua/bodgery/init.lua`)
 
 - `tool`: move out of init, which holds only the user-facing API (functions keymaps and autocmds call). It only forwards to `M.tools.register`.
 - Pick one argument order for every function. `open(config, opts?)` and `sessions(config, filter?)` put the config first, `touched(id, config)`, `resume(id, bufnr?, config?)`, `toggle(bufnr?, config?)` put it last, and the pickers mix both.
@@ -14,7 +14,6 @@
 - Script that generates vimdoc from the API.
 - Config options for auto-sending the file and the selection, where missing.
 - File sending is inconsistent, and sometimes sends the prompt file just used to edit a prompt.
-- Rename bodging.nvim to nvim-bodgery.
 - Skills: a general nvim-config skill and a bodgery config skill.
 - A skills directory, or a config option, for adding custom skills.
 - Prompt filetype as a markdown subtype (`markdown.prompt` or `prompt.markdown`) in place of `bodge-prompt`.

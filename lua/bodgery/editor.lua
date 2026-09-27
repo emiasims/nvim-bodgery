@@ -10,7 +10,7 @@ function M.edit(file, open, done)
   vim.filetype.add({ filename = { [file] = 'bodge-prompt' } })
   open(file)
   local bufnr = vim.fn.bufnr(file)
-  local group = vim.api.nvim_create_augroup('bodging.editor.' .. bufnr, { clear = true })
+  local group = vim.api.nvim_create_augroup('bodgery.editor.' .. bufnr, { clear = true })
   local function finish()
     pcall(vim.api.nvim_del_augroup_by_id, group)
     done()
@@ -40,7 +40,7 @@ function M.edit(file, open, done)
 end
 
 --- Serves `POST /editor` with `{ "file": path }`, replying once the user is done.
---- @param server bodging.http.Server
+--- @param server bodgery.http.Server
 function M.register(server)
   server:route({
     method = 'POST',
@@ -52,7 +52,7 @@ function M.register(server)
         return 400, { error = 'expected {"file": path}' }
       end
       local finished = false
-      --- @type bodging.Terminal
+      --- @type bodgery.Terminal
       local term = req.ctx
       local cancel = M.edit(file, term.config.editor.open, function()
         finished = true

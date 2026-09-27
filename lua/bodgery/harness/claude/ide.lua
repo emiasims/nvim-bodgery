@@ -1,4 +1,4 @@
-local diagnostics = require('bodging.diagnostics')
+local diagnostics = require('bodgery.diagnostics')
 
 local M = {}
 
@@ -59,7 +59,7 @@ end
 
 --- Open IDE websocket connections. Selections go to all of them, since the shared lockfile
 --- token can't tell which terminal a connection belongs to.
---- @type table<bodging.ws.Conn, true>
+--- @type table<bodgery.ws.Conn, true>
 M.clients = {}
 
 --- @param method string
@@ -171,7 +171,7 @@ end
 --- Sends the current visual selection, or the last one in this buffer.
 function M.send_selection()
   if not is_file(0) then
-    error('bodging: the current buffer is not a file', 0)
+    error('bodgery: the current buffer is not a file', 0)
   end
   notify('selection_changed', visual() or cursor())
 end
@@ -180,7 +180,7 @@ end
 --- @param range? integer[] first and last line, 1-based
 function M.send_at_mention(range)
   if not is_file(0) then
-    error('bodging: the current buffer is not a file', 0)
+    error('bodgery: the current buffer is not a file', 0)
   end
   notify('at_mentioned', {
     filePath = vim.api.nvim_buf_get_name(0),
@@ -194,7 +194,7 @@ end
 function M.attach(group)
   local function auto(fn)
     return function()
-      if next(M.clients) and require('bodging.harness.claude.config').current().selection.auto then
+      if next(M.clients) and require('bodgery.harness.claude.config').current().selection.auto then
         fn()
       end
     end
@@ -214,7 +214,7 @@ function M.attach(group)
 end
 
 --- Tools served on the IDE websocket.
---- @return bodging.mcp.Tool[]
+--- @return bodgery.mcp.Tool[]
 function M.tools()
   local tools = {
     {
@@ -241,9 +241,9 @@ function M.tools()
       },
       handler = function(args)
         return function(resolve)
-          local d = require('bodging.harness.claude.diff').open(args, resolve)
+          local d = require('bodgery.harness.claude.diff').open(args, resolve)
           return function()
-            require('bodging.harness.claude.diff').cancel(d)
+            require('bodgery.harness.claude.diff').cancel(d)
           end
         end
       end,
@@ -257,7 +257,7 @@ function M.tools()
         required = { 'tab_name' },
       },
       handler = function(args)
-        require('bodging.harness.claude.diff').close(args.tab_name)
+        require('bodgery.harness.claude.diff').close(args.tab_name)
         return 'TAB_CLOSED'
       end,
     },
@@ -265,11 +265,11 @@ function M.tools()
       name = 'closeAllDiffTabs',
       description = 'Close every diff opened by openDiff',
       handler = function()
-        return ('CLOSED_%d_DIFF_TABS'):format(require('bodging.harness.claude.diff').close_all())
+        return ('CLOSED_%d_DIFF_TABS'):format(require('bodgery.harness.claude.diff').close_all())
       end,
     },
   }
-  if require('bodging.harness.claude.config').current().execute_code then
+  if require('bodgery.harness.claude.config').current().execute_code then
     tools[#tools + 1] = {
       name = 'executeCode',
       description = "Run Lua in the user's Neovim and return the inspected return values",

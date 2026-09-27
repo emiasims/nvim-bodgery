@@ -7,7 +7,7 @@ local Screen = require('nvim-test.screen')
 local function call(args)
   exec_lua(function(a)
     _G.result = nil
-    require('bodging.tools.screen').tool.handler(a)(function(value)
+    require('bodgery.tools.screen').tool.handler(a)(function(value)
       _G.result = value
     end)
   end, args)
@@ -79,7 +79,7 @@ describe('nvim_screen', function()
 
   it('reports a screen that is not drawn in time as an error', function()
     exec_lua(function()
-      require('bodging.tools.screen').timeout = 0
+      require('bodgery.tools.screen').timeout = 0
     end)
     local result = call({})
     helpers.eq(true, result.isError)

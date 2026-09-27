@@ -1,9 +1,9 @@
-local hooks = require('bodging.harness.claude.hooks')
-local ide = require('bodging.harness.claude.ide')
-local launch = require('bodging.harness.claude.launch')
-local mcp = require('bodging.server.mcp')
-local sessions = require('bodging.harness.claude.sessions')
-local ws = require('bodging.server.ws')
+local hooks = require('bodgery.harness.claude.hooks')
+local ide = require('bodgery.harness.claude.ide')
+local launch = require('bodgery.harness.claude.launch')
+local mcp = require('bodgery.server.mcp')
+local sessions = require('bodgery.harness.claude.sessions')
+local ws = require('bodgery.server.ws')
 
 local M = {}
 
@@ -19,10 +19,10 @@ M.sessions = sessions.sessions
 M.live = sessions.live
 
 --- Types the resume command for session `id` into `term`.
---- @param term bodging.Terminal
+--- @param term bodgery.Terminal
 --- @param id string
 function M.resume(term, id)
-  require('bodging.terminal').submit(term, '/resume ' .. id)
+  require('bodgery.terminal').submit(term, '/resume ' .. id)
 end
 
 --- Arguments that start a terminal in session `id`.
@@ -47,7 +47,7 @@ end
 
 --- Subtasks from the transcript, with hooks deciding which are open.
 --- @param id string
---- @return bodging.Subtask[]
+--- @return bodgery.Subtask[]
 function M.subtasks(id)
   local out = sessions.subtasks(id)
   local live = vim.deepcopy((hooks.sessions[id] or {}).subtasks or {})
@@ -65,13 +65,13 @@ function M.subtasks(id)
   return vim.list_extend(out, rest)
 end
 
---- @class bodging.claude.State
+--- @class bodgery.claude.State
 --- @field port integer
 --- @field dir string holds the settings and MCP config files
 --- @field lockfile string
 --- @field auth_token string shared by every websocket connection
 
---- @type bodging.claude.State?
+--- @type bodgery.claude.State?
 M.state = nil
 
 --- @return string
@@ -80,10 +80,10 @@ local function random_token()
 end
 
 --- Writes the launch files and the lockfile, and serves the IDE websocket on `server`.
---- @param server bodging.http.Server
+--- @param server bodgery.http.Server
 function M.start(server)
   local port = server.port
-  local dir = vim.fs.joinpath(vim.fn.stdpath('run'), 'bodging', tostring(port))
+  local dir = vim.fs.joinpath(vim.fn.stdpath('run'), 'bodgery', tostring(port))
   local state = {
     port = port,
     dir = dir,
@@ -123,7 +123,7 @@ function M.start(server)
       handlers.on_close(conn)
     end,
   }))
-  ide.attach(vim.api.nvim_create_augroup('bodging.ide', { clear = true }))
+  ide.attach(vim.api.nvim_create_augroup('bodgery.ide', { clear = true }))
 end
 
 --- Removes the lockfile and the launch files.
@@ -140,7 +140,7 @@ end
 --- @param opts { cmd: string[], args?: string[], token: string }
 --- @return { cmd: string[], env: table<string, string> }
 function M.launch(opts)
-  local state = assert(M.state, 'bodging: the server is not running')
+  local state = assert(M.state, 'bodgery: the server is not running')
   return launch.build({
     cmd = opts.cmd,
     args = opts.args,

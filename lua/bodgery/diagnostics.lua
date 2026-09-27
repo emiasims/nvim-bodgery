@@ -1,6 +1,6 @@
 local M = {}
 
---- @class bodging.Diagnostic
+--- @class bodgery.Diagnostic
 --- @field lnum integer 0-based
 --- @field col integer 0-based
 --- @field end_lnum integer
@@ -12,7 +12,7 @@ local M = {}
 
 --- Treesitter `ERROR` and `MISSING` nodes in every tree of the buffer's parser.
 --- @param bufnr integer
---- @return bodging.Diagnostic[]
+--- @return bodgery.Diagnostic[]
 local function syntax_errors(bufnr)
   local ok, parser = pcall(vim.treesitter.get_parser, bufnr, nil, { error = false })
   if not ok or not parser then
@@ -64,7 +64,7 @@ end
 --- Diagnostics from every `vim.diagnostic` source plus treesitter syntax errors, for one
 --- buffer or every loaded file buffer.
 --- @param bufnr? integer
---- @return { bufnr: integer, path: string, diagnostics: bodging.Diagnostic[] }[]
+--- @return { bufnr: integer, path: string, diagnostics: bodgery.Diagnostic[] }[]
 function M.collect(bufnr)
   local bufs = bufnr and { bufnr } or vim.tbl_filter(is_file, vim.api.nvim_list_bufs())
   local out = {}

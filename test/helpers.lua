@@ -30,7 +30,7 @@ function M.clear(tmp)
     -- a real `claude` on the runner's path would give every test a detected config
     local search = vim.env.PATH
     vim.env.PATH = ''
-    vim.cmd.source(root .. '/plugin/bodging.lua')
+    vim.cmd.source(root .. '/plugin/bodgery.lua')
     vim.env.PATH = search
   end, package.path, tmp, M.root)
   return tmp
@@ -51,7 +51,7 @@ end
 --- @param cond? fun(record: table): any
 --- @return { argv: string[], env: table<string, string>, cwd: string, stdin: string[] }
 function M.record(bufnr, cond)
-  local term = require('bodging.terminal').terminals[bufnr]
+  local term = require('bodgery.terminal').terminals[bufnr]
   local path = ('%s/%s.json'):format(vim.env.FAKE_CLAUDE_RECORD, term.token)
   local rec
   M.wait(function()
@@ -197,11 +197,11 @@ end
 --- @param before table<userdata, string> from `handles()`
 --- @return string[]
 function M.stop_plugin(before)
-  for _, term in pairs(require('bodging.terminal').terminals) do
+  for _, term in pairs(require('bodgery.terminal').terminals) do
     vim.fn.jobstop(term.job)
     vim.fn.jobwait({ term.job }, 1000)
   end
-  require('bodging').stop()
+  require('bodgery').stop()
   return M.leaked(before)
 end
 
@@ -371,18 +371,18 @@ end
 --- @param payload string
 --- @param step? integer
 function Client:send_frame(opcode, payload, step)
-  self:send(require('bodging.server.ws').encode(opcode, payload, 'abcd'), step)
+  self:send(require('bodgery.server.ws').encode(opcode, payload, 'abcd'), step)
 end
 
 --- @param text string
 function Client:send_text(text)
-  self:send_frame(require('bodging.server.ws').OP.TEXT, text)
+  self:send_frame(require('bodgery.server.ws').OP.TEXT, text)
 end
 
 --- Waits for the next frame from the server.
---- @return bodging.ws.Frame
+--- @return bodgery.ws.Frame
 function Client:recv()
-  local ws = require('bodging.server.ws')
+  local ws = require('bodgery.server.ws')
   local frame
   M.wait(function()
     local f, consumed = ws.decode(self.buf)
@@ -405,7 +405,7 @@ function Client:recv_json()
   return vim.json.decode(frame.payload)
 end
 
---- @param frame bodging.ws.Frame
+--- @param frame bodgery.ws.Frame
 --- @return integer
 function M.close_code(frame)
   return frame.payload:byte(1) * 256 + frame.payload:byte(2)

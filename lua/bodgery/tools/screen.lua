@@ -3,15 +3,15 @@ local M = {}
 --- Milliseconds to wait for the screen to be drawn.
 M.timeout = 2000
 
---- @class bodging.ScreenRun
+--- @class bodgery.ScreenRun
 --- @field [1] integer row, 1-based
 --- @field [2] integer first screen column, 1-based
 --- @field [3] integer last screen column, inclusive
 --- @field [4] string highlight groups, joined with '+' when combined
 
---- @class bodging.Screen
+--- @class bodgery.Screen
 --- @field lines string[] one per screen row, trailing spaces removed
---- @field highlights? bodging.ScreenRun[]
+--- @field highlights? bodgery.ScreenRun[]
 
 --- @param info table[] `ext_hlstate` info for one attribute id
 --- @return string?
@@ -29,7 +29,7 @@ end
 --- @param grid { [1]: string, [2]: integer }[][] rows of `{ text, attr_id }` cells
 --- @param attrs table<integer, table[]>
 --- @param highlights boolean
---- @return bodging.Screen
+--- @return bodgery.Screen
 local function snapshot(grid, attrs, highlights)
   local out = { lines = {}, highlights = highlights and {} or nil }
   for r, row in ipairs(grid) do
@@ -58,7 +58,7 @@ end
 --- Reads the screen by attaching a UI to this Neovim's own server. Attaching forces a
 --- full redraw, and `callback` runs after the first flush that drew the grid.
 --- @param opts { highlights?: boolean }
---- @param callback fun(screen: bodging.Screen?, err: string?)
+--- @param callback fun(screen: bodgery.Screen?, err: string?)
 --- @return fun() cancel
 function M.capture(opts, callback)
   local addr, started = vim.v.servername, false
@@ -160,7 +160,7 @@ function M.capture(opts, callback)
   end
 end
 
---- @type bodging.ToolSpec
+--- @type bodgery.ToolSpec
 M.tool = {
   description = 'Returns the Neovim screen as the user sees it: every window, the status lines, '
     .. 'tabline, and command line, one string per screen row. With highlights, also returns '

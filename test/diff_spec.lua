@@ -7,8 +7,8 @@ describe('diff', function()
     exec_lua(function()
       _G.h = require('test.helpers')
       _G.before = h.handles()
-      _G.cc = require('bodging')
-      _G.diff = require('bodging.harness.claude.diff')
+      _G.cc = require('bodgery')
+      _G.diff = require('bodgery.harness.claude.diff')
       cc.setup({ cmd = h.fake_cmd() })
       cc.start('claude')
       _G.client = h.ws_connect(cc.server.port, cc.harnesses.claude.state.auth_token)
@@ -188,7 +188,7 @@ describe('diff', function()
       local new_path = dir .. '/new.txt'
       local rid = open_diff('n', 'a\nb\n', new_path)
       local d = diff.pending.n
-      local ns = vim.api.nvim_get_namespaces()['bodging.diff']
+      local ns = vim.api.nvim_get_namespaces()['bodgery.diff']
       local marks = vim.api.nvim_buf_get_extmarks(d.bufnr, ns, 0, -1, { details = true })
       h.eq(
         { { 0, 'DiffAdd' }, { 1, 'DiffAdd' } },
@@ -204,7 +204,7 @@ describe('diff', function()
 
   it('marks changes inline, or as removed and added lines', function()
     exec_lua(function()
-      local ns = vim.api.nvim_get_namespaces()['bodging.diff']
+      local ns = vim.api.nvim_get_namespaces()['bodgery.diff']
       local function marks(bufnr)
         local out = {}
         for _, m in ipairs(vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, { details = true })) do

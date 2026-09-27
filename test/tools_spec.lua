@@ -7,10 +7,10 @@ describe('custom tools', function()
     exec_lua(function()
       _G.h = require('test.helpers')
       _G.before = h.handles()
-      _G.cc = require('bodging')
+      _G.cc = require('bodgery')
       cc.setup({ cmd = h.fake_cmd() })
       cc.start('claude')
-      _G.help = require('bodging.tools.help')
+      _G.help = require('bodgery.tools.help')
 
       local id = 0
       --- Posts one JSON-RPC request to /mcp with a terminal's token.
@@ -25,7 +25,7 @@ describe('custom tools', function()
 
       --- An MCP session for the terminal in `bufnr`, the way Claude opens one.
       function _G.session(bufnr)
-        local token = require('bodging.terminal').terminals[bufnr].token
+        local token = require('bodgery.terminal').terminals[bufnr].token
         local sid = post(token, 'initialize', vim.empty_dict()).headers['mcp-session-id']
         return {
           names = function()
@@ -71,7 +71,7 @@ describe('custom tools', function()
         end,
       })
       local a, b = cc.open('claude'), cc.open('claude')
-      local terms = require('bodging.terminal').terminals
+      local terms = require('bodgery.terminal').terminals
       h.post_hook(cc.server.port, terms[a].token, h.fixture('SessionStart-startup', { session_id = 'sa' }))
       h.post_hook(cc.server.port, terms[b].token, h.fixture('SessionStart-startup', { session_id = 'sb' }))
 

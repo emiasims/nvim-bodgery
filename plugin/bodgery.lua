@@ -1,16 +1,16 @@
-if vim.g.loaded_bodging then
+if vim.g.loaded_bodgery then
   return
 end
-vim.g.loaded_bodging = true
+vim.g.loaded_bodgery = true
 
-local group = vim.api.nvim_create_augroup('bodging', {})
+local group = vim.api.nvim_create_augroup('bodgery', {})
 
 vim.api.nvim_create_autocmd('VimLeavePre', {
   group = group,
-  desc = 'Stop the bodging server and remove its lockfile',
+  desc = 'Stop the bodgery server and remove its lockfile',
   callback = function()
-    if package.loaded.bodging then
-      require('bodging').stop()
+    if package.loaded.bodgery then
+      require('bodgery').stop()
     end
   end,
 })
@@ -19,8 +19,8 @@ vim.api.nvim_create_autocmd('SessionWritePost', {
   group = group,
   desc = 'Record agent terminals for session restore',
   callback = function()
-    if package.loaded['bodging.terminal'] then
-      require('bodging.restore').save()
+    if package.loaded['bodgery.terminal'] then
+      require('bodgery.restore').save()
     end
   end,
 })
@@ -30,7 +30,7 @@ vim.api.nvim_create_autocmd('BufNew', {
   pattern = 'term://*',
   desc = 'Mark restored agent terminals for relaunch',
   callback = function(ev)
-    require('bodging.restore').on_new(ev)
+    require('bodgery.restore').on_new(ev)
   end,
 })
 
@@ -40,8 +40,8 @@ vim.api.nvim_create_autocmd('BufReadCmd', {
   nested = true,
   desc = 'Relaunch a restored agent terminal',
   callback = function(ev)
-    require('bodging.restore').on_read(ev)
+    require('bodgery.restore').on_read(ev)
   end,
 })
 
-require('bodging').detect()
+require('bodgery').detect()

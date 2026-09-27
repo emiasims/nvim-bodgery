@@ -15,42 +15,42 @@ end
 --- Calls `fn` with `opts.session_id` and `config`, or the target terminal's session and
 --- config.
 --- @param opts { session_id?: string }
---- @param config? bodging.ConfigArg
---- @param fn fun(session_id: string, config: bodging.Config)
+--- @param config? bodgery.ConfigArg
+--- @param fn fun(session_id: string, config: bodgery.Config)
 local function with_session(opts, config, fn)
-  local get = require('bodging.config').get
+  local get = require('bodgery.config').get
   if opts.session_id then
     if not config then
-      error('bodging: pass a config with a session_id', 0)
+      error('bodgery: pass a config with a session_id', 0)
     end
     return fn(opts.session_id, get(config))
   end
-  require('bodging.terminal').target(nil, config and get(config), function(term)
+  require('bodgery.terminal').target(nil, config and get(config), function(term)
     if not term then
-      error('bodging: no agent terminal to read a session from', 0)
+      error('bodgery: no agent terminal to read a session from', 0)
     end
-    fn(term.session_id or error('bodging: the terminal has no session yet', 0), term.config)
+    fn(term.session_id or error('bodgery: the terminal has no session yet', 0), term.config)
   end)
 end
 
---- @class bodging.PickOpts
+--- @class bodgery.PickOpts
 --- @field on_choice? fun(item: any) replaces the default action
 
 --- Picks a session of `config`'s harness started in `opts.cwd` (default: the current
 --- directory), leaving out archived ones. Choosing shows the terminal holding it, or
---- resumes it with |bodging.resume()|.
---- @param config bodging.ConfigArg
---- @param opts? bodging.PickOpts|{ cwd?: string }
+--- resumes it with |bodgery.resume()|.
+--- @param config bodgery.ConfigArg
+--- @param opts? bodgery.PickOpts|{ cwd?: string }
 function M.sessions(config, opts)
   opts = opts or {}
-  local cc = require('bodging')
+  local cc = require('bodgery')
   local items = {}
   for s in cc.sessions(config, { cwd = opts.cwd or vim.fn.getcwd(), archived = false }) do
     items[#items + 1] = s
   end
   vim.ui.select(items, {
     prompt = 'Session',
-    kind = 'bodging.session',
+    kind = 'bodgery.session',
     format_item = function(s)
       local mark = s.bufnr and '* ' or s.live and '+ ' or '  '
       return ('%s%s  (%s)'):format(mark, s.title or s.id, ago(s.last_activity))
@@ -70,15 +70,15 @@ end
 
 --- Picks a subagent or background command of `opts.session_id` (default: the target
 --- terminal's session) and opens its transcript or output.
---- @param opts? bodging.PickOpts|{ session_id?: string }
---- @param config? bodging.ConfigArg required with `opts.session_id`
+--- @param opts? bodgery.PickOpts|{ session_id?: string }
+--- @param config? bodgery.ConfigArg required with `opts.session_id`
 function M.subtasks(opts, config)
   opts = opts or {}
   with_session(opts, config, function(id, c)
-    local items = require('bodging').subtasks(id, c.name)
+    local items = require('bodgery').subtasks(id, c.name)
     vim.ui.select(items, {
       prompt = 'Subtask',
-      kind = 'bodging.subtask',
+      kind = 'bodgery.subtask',
       format_item = function(t)
         return ('%s %-5s %s'):format(t.open and '*' or ' ', t.kind, t.description or t.id)
       end,
@@ -90,7 +90,7 @@ function M.subtasks(opts, config)
       elseif t.path then
         vim.cmd.edit({ t.path, magic = { file = false } })
       else
-        vim.notify('bodging: no output yet for ' .. t.id)
+        vim.notify('bodgery: no output yet for ' .. t.id)
       end
     end)
   end)
@@ -98,15 +98,15 @@ end
 
 --- Picks a file the agent read or edited in `opts.session_id` (default: the target
 --- terminal's session) and edits it.
---- @param opts? bodging.PickOpts|{ session_id?: string }
---- @param config? bodging.ConfigArg required with `opts.session_id`
+--- @param opts? bodgery.PickOpts|{ session_id?: string }
+--- @param config? bodgery.ConfigArg required with `opts.session_id`
 function M.touched(opts, config)
   opts = opts or {}
   with_session(opts, config, function(id, c)
-    local items = require('bodging').touched(id, c.name)
+    local items = require('bodgery').touched(id, c.name)
     vim.ui.select(items, {
       prompt = 'Touched file',
-      kind = 'bodging.file',
+      kind = 'bodgery.file',
       format_item = function(path)
         return vim.fn.fnamemodify(path, ':~:.')
       end,

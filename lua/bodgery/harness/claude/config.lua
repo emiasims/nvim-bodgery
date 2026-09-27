@@ -1,6 +1,6 @@
 local M = {}
 
---- @class bodging.claude.Config
+--- @class bodgery.claude.Config
 --- @field hooks table<string, fun(input: table): table?> hook event name to callback
 --- @field execute_code boolean serve the `executeCode` IDE tool
 --- @field selection { auto: boolean } send `selection_changed` automatically
@@ -14,7 +14,7 @@ M.defaults = {
   diff = {
     inline = true,
     window = function()
-      return require('bodging.terminal').pick_window()
+      return require('bodgery.terminal').pick_window()
     end,
   },
   ccd_dir = vim.fs.normalize('~/Library/Application Support/Claude/claude-code-sessions'),
@@ -53,9 +53,9 @@ end
 
 --- The config of the most recently used Claude terminal, for IDE requests, which can't
 --- tell which terminal sent them. The defaults when none is open.
---- @return bodging.claude.Config
+--- @return bodgery.claude.Config
 function M.current()
-  local term = require('bodging.terminal').last('claude')
+  local term = require('bodgery.terminal').last('claude')
   return term and term.config or M.defaults
 end
 

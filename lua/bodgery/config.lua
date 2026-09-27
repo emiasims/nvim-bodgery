@@ -1,22 +1,22 @@
 local M = {}
 
---- @class bodging.ToolSpec
+--- @class bodgery.ToolSpec
 --- @field description string
 --- @field input_schema? table
 --- @field handler fun(args: table, ctx: { session_id: string?, bufnr: integer }): any
 
 --- Core options, plus the options of the harness module `harness.<name>.config`.
---- @class bodging.Config: bodging.claude.Config
---- @field name string key in |bodging.configs|, defaults to `harness`
---- @field harness string key in |bodging.harnesses|
+--- @class bodgery.Config: bodgery.claude.Config
+--- @field name string key in |bodgery.configs|, defaults to `harness`
+--- @field harness string key in |bodgery.harnesses|
 --- @field cmd string[] command and default flags
 --- @field command string user command that opens this config, defaults to the capitalized
 ---   harness name. Configs sharing a command are picked by name as its first argument.
---- @field tools table<string, bodging.ToolSpec>
+--- @field tools table<string, bodgery.ToolSpec>
 --- @field on_busy 'error'|'interrupt'|'queue'|'prompt'
---- @field active bodging.Resolver[] picks the terminal a call without a `bufnr` acts on
+--- @field active bodgery.Resolver[] picks the terminal a call without a `bufnr` acts on
 --- @field root_markers string[] passed to |vim.fs.root()| by the `project` resolver
---- @field show { window: fun(ctx: bodging.Context, term?: bodging.Terminal): integer }
+--- @field show { window: fun(ctx: bodgery.Context, term?: bodgery.Terminal): integer }
 ---   picks the window that shows a hidden or new terminal
 --- @field restore { max_age: number } seconds
 --- @field editor { open: fun(file: string) }
@@ -42,7 +42,7 @@ M.defaults = {
 
 local on_busy = { 'error', 'interrupt', 'queue', 'prompt' }
 
---- Resolvers named in `active`, from `bodging.terminal`.
+--- Resolvers named in `active`, from `bodgery.terminal`.
 M.resolvers = { 'window', 'buffer', 'tab', 'global', 'project', 'new', 'pick', 'error' }
 
 -- replaced whole by a layer that sets them, where tables merge by key
@@ -67,7 +67,7 @@ local schema = {
 }
 
 local function fail(fmt, ...)
-  error('bodging: ' .. fmt:format(...), 0)
+  error('bodgery: ' .. fmt:format(...), 0)
 end
 
 local function expect(name, value, expected, optional)
@@ -143,16 +143,16 @@ end
 
 --- Validates `opts` and merges it over the core and harness defaults.
 --- @param opts? table
---- @return bodging.Config
+--- @return bodgery.Config
 function M.resolve(opts)
   opts = opts or {}
   expect('opts', opts, 'table')
   local name = opts.harness or M.defaults.harness
   expect('harness', name, 'string')
-  if not require('bodging').harnesses._submodules[name] then
+  if not require('bodgery').harnesses._submodules[name] then
     fail('harness: unknown harness %q', name)
   end
-  local harness = require(('bodging.harness.%s.config'):format(name))
+  local harness = require(('bodgery.harness.%s.config'):format(name))
 
   local merged = vim.tbl_deep_extend('force', {}, M.defaults, harness.defaults, opts)
   for _, key in ipairs(lists) do
@@ -163,14 +163,14 @@ function M.resolve(opts)
   return merged
 end
 
---- @alias bodging.ConfigArg string|table a config name, or a table with the name of the
+--- @alias bodgery.ConfigArg string|table a config name, or a table with the name of the
 ---   config it overrides in `name`
 
 --- The config `config` names, or `config` merged over the config its `name` names.
---- @param config bodging.ConfigArg
---- @return bodging.Config
+--- @param config bodgery.ConfigArg
+--- @return bodgery.Config
 function M.get(config)
-  local configs = require('bodging').configs
+  local configs = require('bodgery').configs
   if type(config) == 'string' then
     return configs[config]
   end
@@ -181,7 +181,7 @@ function M.get(config)
   for _, key in ipairs(lists) do
     merged[key] = config[key] or base[key]
   end
-  validate(merged, require(('bodging.harness.%s.config'):format(merged.harness)))
+  validate(merged, require(('bodgery.harness.%s.config'):format(merged.harness)))
   return merged
 end
 

@@ -1,4 +1,4 @@
-local launch = require('bodging.harness.claude.launch')
+local launch = require('bodgery.harness.claude.launch')
 
 local M = {}
 
@@ -14,7 +14,7 @@ local CHUNK = 64 * 1024
 local FILE_TOOLS =
   { Read = 'file_path', Edit = 'file_path', Write = 'file_path', NotebookEdit = 'notebook_path' }
 
---- @class bodging.Session
+--- @class bodgery.Session
 --- @field id string
 --- @field last_activity integer seconds since the epoch
 --- @field cwd? string
@@ -23,7 +23,7 @@ local FILE_TOOLS =
 --- @field live? { pid: integer, status: string?, name: string? }
 --- @field bufnr? integer the plugin terminal holding the session
 
---- @class bodging.SessionFilter
+--- @class bodgery.SessionFilter
 --- @field cwd? string only sessions started in this directory
 --- @field archived? boolean
 --- @field fields? string[] fields to fill beyond `id` and `last_activity`, default all
@@ -239,9 +239,9 @@ function M.live()
 end
 
 --- Sessions newest first, reading only the files the requested fields need.
---- @param filter? bodging.SessionFilter
---- @param config bodging.Config
---- @return fun(): bodging.Session?
+--- @param filter? bodgery.SessionFilter
+--- @param config bodgery.Config
+--- @return fun(): bodgery.Session?
 function M.sessions(filter, config)
   filter = filter or {}
   local want = {}
@@ -253,7 +253,7 @@ function M.sessions(filter, config)
   local ccd = (want.title or want.archived or filter.archived ~= nil) and ccd_index(config.ccd_dir) or {}
   local live = (want.live or want.title) and M.live() or {}
   local terms = {}
-  for bufnr, term in pairs(require('bodging.terminal').terminals) do
+  for bufnr, term in pairs(require('bodgery.terminal').terminals) do
     if term.session_id then
       terms[term.session_id] = bufnr
     end
@@ -388,7 +388,7 @@ end
 --- Subagents and background Bash tasks from the transcript. A subtask is open while the
 --- session is live and Claude hasn't reported it finished.
 --- @param id string
---- @return bodging.Subtask[]
+--- @return bodgery.Subtask[]
 function M.subtasks(id)
   local main = find_transcript(id)
   if not main then

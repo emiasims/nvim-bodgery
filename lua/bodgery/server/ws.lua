@@ -2,8 +2,8 @@
 -- claudecode.nvim's server/frame.lua (https://github.com/coder/claudecode.nvim, commit 2390c6e,
 -- MIT License, Copyright (c) 2025 Coder Technologies).
 local bit = require('bit')
-local http = require('bodging.server.http')
-local sha1 = require('bodging.server.sha1')
+local http = require('bodgery.server.http')
+local sha1 = require('bodgery.server.sha1')
 
 local M = {}
 
@@ -55,7 +55,7 @@ function M.encode(opcode, payload, mask)
   return head .. payload
 end
 
---- @class bodging.ws.Frame
+--- @class bodgery.ws.Frame
 --- @field fin boolean
 --- @field opcode integer
 --- @field masked boolean
@@ -63,7 +63,7 @@ end
 
 --- Parses one frame from the front of `buf`.
 --- @param buf string
---- @return bodging.ws.Frame? frame nil when incomplete or invalid
+--- @return bodgery.ws.Frame? frame nil when incomplete or invalid
 --- @return integer consumed bytes
 --- @return integer? close_code set when the frame violates the protocol
 function M.decode(buf)
@@ -127,8 +127,8 @@ function M.accept_key(key)
   return vim.base64.encode(sha1(key .. GUID))
 end
 
---- @class bodging.ws.Conn
---- @field private http bodging.http.Conn
+--- @class bodgery.ws.Conn
+--- @field private http bodgery.http.Conn
 --- @field private buf string
 --- @field closed boolean
 local Conn = {}
@@ -159,7 +159,7 @@ function Conn:close(code, reason)
   end
 end
 
---- @param opts bodging.ws.Opts
+--- @param opts bodgery.ws.Opts
 function Conn:read(opts)
   while not self.closed do
     local frame, consumed, code = M.decode(self.buf)
@@ -189,16 +189,16 @@ function Conn:read(opts)
   end
 end
 
---- @class bodging.ws.Opts
+--- @class bodgery.ws.Opts
 --- @field path string
 --- @field token fun(): string the expected `X-Claude-Code-Ide-Authorization` value
---- @field on_open? fun(conn: bodging.ws.Conn)
---- @field on_message fun(conn: bodging.ws.Conn, text: string)
---- @field on_close? fun(conn: bodging.ws.Conn)
+--- @field on_open? fun(conn: bodgery.ws.Conn)
+--- @field on_message fun(conn: bodgery.ws.Conn, text: string)
+--- @field on_close? fun(conn: bodgery.ws.Conn)
 
 --- An HTTP route that upgrades matching requests to websocket connections.
---- @param opts bodging.ws.Opts
---- @return bodging.http.Route
+--- @param opts bodgery.ws.Opts
+--- @return bodgery.http.Route
 function M.route(opts)
   return {
     method = 'GET',

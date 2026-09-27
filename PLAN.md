@@ -5,7 +5,7 @@ Build order for the first version. [DECISIONS.md](DECISIONS.md) holds the behavi
 ## Layout
 
 ```
-lua/bodging/
+lua/bodgery/
   init.lua              setup() and the public API
   config.lua            defaults and validation
   events.lua            User autocmds
@@ -30,9 +30,9 @@ lua/bodging/
     diff.lua            openDiff review
     sessions.lua        transcripts, ccd's index, live sessions
 bin/
-  bodging-editor        EDITOR wrapper (sh)
-  bodging-editor.cmd    EDITOR wrapper (Windows)
-doc/bodging.txt
+  bodgery-editor        EDITOR wrapper (sh)
+  bodgery-editor.cmd    EDITOR wrapper (Windows)
+doc/bodgery.txt
 test/
   helpers.lua
   bin/fake-claude
@@ -118,14 +118,14 @@ Step 17 checks whether Claude re-reads `tools/list` during a session. JSON-only 
 
 `terminal.lua` opens the terminal in the current window or in a split built from `mods` with `nvim_cmd`, defines `:Claude`, gives each terminal a token, and keeps the registry of terminals. `harness/claude/launch.lua` builds the command and environment and writes the files Claude reads.
 
-Secrets never go in argv, because argv becomes the terminal's buffer name, gets written into session files, and shows in `ps`. The token travels only in the environment (`BODGING_TOKEN`), and the port in `CLAUDE_CODE_SSE_PORT`. The hook settings and MCP config are written as files under `stdpath('run')` and passed by path. Hook headers reference `$BODGING_TOKEN`. MCP config headers need the same environment variable expansion. Check it against the binary first, and if `--mcp-config` doesn't expand them, write one config file per terminal with mode 0600.
+Secrets never go in argv, because argv becomes the terminal's buffer name, gets written into session files, and shows in `ps`. The token travels only in the environment (`BODGERY_TOKEN`), and the port in `CLAUDE_CODE_SSE_PORT`. The hook settings and MCP config are written as files under `stdpath('run')` and passed by path. Hook headers reference `$BODGERY_TOKEN`. MCP config headers need the same environment variable expansion. Check it against the binary first, and if `--mcp-config` doesn't expand them, write one config file per terminal with mode 0600.
 
 The lockfile at `$CLAUDE_CONFIG_DIR/ide/<port>.lock` (or `~/.claude/ide/`) is written atomically (temporary file, then rename) with mode 0600 when the server starts. It is removed on `VimLeavePre` and on `stop()`.
 
 Tests with fake-claude:
 
 - the recorded argv holds the user's `opts.cmd` flags in order, followed by `--settings <path>` and `--mcp-config <path>`
-- the recorded environment has `CLAUDE_CODE_SSE_PORT`, `BODGING_TOKEN`, `EDITOR`, and `FORCE_CODE_TERMINAL=true`
+- the recorded environment has `CLAUDE_CODE_SSE_PORT`, `BODGERY_TOKEN`, `EDITOR`, and `FORCE_CODE_TERMINAL=true`
 - `no_proxy` and `NO_PROXY` keep their existing values and gain `127.0.0.1` and `localhost` once each
 - the buffer name, argv, and settings files contain no token
 - `open()` without `mods` replaces the current window's buffer and nothing else
@@ -237,7 +237,7 @@ Tests:
 
 Start with a spike, because Neovim restores `term://` buffers through its own `BufReadCmd`. Find out whether the plugin's handler can run in place of Neovim's for its own terminals, and which one runs first. Then decide how to relaunch a terminal with a fresh token and port. Record the result in DECISIONS.md before building. Launch arguments hold file paths, not the port or token, so a stale command line is harmless as long as the plugin relaunches the terminal.
 
-`restore.lua` then writes `stdpath('state')/bodging/terminals.json` on `SessionWritePost`, relaunches restored Claude terminals with `--resume <id>`, and purges entries older than `opts.restore.max_age`. The spike's result is in DECISIONS.md.
+`restore.lua` then writes `stdpath('state')/bodgery/terminals.json` on `SessionWritePost`, relaunches restored Claude terminals with `--resume <id>`, and purges entries older than `opts.restore.max_age`. The spike's result is in DECISIONS.md.
 
 Tests:
 
@@ -249,7 +249,7 @@ Tests:
 
 ### 14. Prompt editor
 
-`bin/bodging-editor` posts the draft's path to `http://127.0.0.1:$CLAUDE_CODE_SSE_PORT/editor` with `curl`, authenticated with `BODGING_TOKEN`, and waits for the reply. `editor.lua` opens the file through `opts.editor.open(file)` (default: `:split`, honoring `'splitbelow'`) and replies once the buffer is hidden or deleted. The `.cmd` variant does the same on Windows.
+`bin/bodgery-editor` posts the draft's path to `http://127.0.0.1:$CLAUDE_CODE_SSE_PORT/editor` with `curl`, authenticated with `BODGERY_TOKEN`, and waits for the reply. `editor.lua` opens the file through `opts.editor.open(file)` (default: `:split`, honoring `'splitbelow'`) and replies once the buffer is hidden or deleted. The `.cmd` variant does the same on Windows.
 
 Tests:
 
@@ -260,7 +260,7 @@ Tests:
 
 ### 15. Contract check and help file
 
-`make contract` runs `strings -n 6` on the installed binary and checks for each literal in DECISIONS.md's Sources, printing the missing ones. Skip literals marked as minified names. `doc/bodging.txt` documents setup, the API, events, and options.
+`make contract` runs `strings -n 6` on the installed binary and checks for each literal in DECISIONS.md's Sources, printing the missing ones. Skip literals marked as minified names. `doc/bodgery.txt` documents setup, the API, events, and options.
 
 ### 16. Screen tool
 

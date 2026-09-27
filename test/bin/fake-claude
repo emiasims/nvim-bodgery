@@ -1,7 +1,7 @@
 -- Stand-in for claude, run as `nvim --clean -l fake-claude [args]`.
 --
 -- Records its argv, environment, and every stdin line as JSON in
--- `$FAKE_CLAUDE_RECORD/<BODGING_TOKEN>.json`, rewritten after each change.
+-- `$FAKE_CLAUDE_RECORD/<BODGERY_TOKEN>.json`, rewritten after each change.
 local uv = vim.uv
 
 local record = {
@@ -12,7 +12,7 @@ local record = {
 }
 
 local dir = assert(os.getenv('FAKE_CLAUDE_RECORD'), 'FAKE_CLAUDE_RECORD is not set')
-local path = ('%s/%s.json'):format(dir, os.getenv('BODGING_TOKEN') or 'none')
+local path = ('%s/%s.json'):format(dir, os.getenv('BODGERY_TOKEN') or 'none')
 
 local function save()
   local tmp = path .. '.tmp'

@@ -1,32 +1,32 @@
---- @class bodging
-local M = vim._defer_require('bodging', {
-  config = ..., --- @module 'bodging.config'
-  editor = ..., --- @module 'bodging.editor'
-  restore = ..., --- @module 'bodging.restore'
-  terminal = ..., --- @module 'bodging.terminal'
-  tools = ..., --- @module 'bodging.tools'
+--- @class bodgery
+local M = vim._defer_require('bodgery', {
+  config = ..., --- @module 'bodgery.config'
+  editor = ..., --- @module 'bodgery.editor'
+  restore = ..., --- @module 'bodgery.restore'
+  terminal = ..., --- @module 'bodgery.terminal'
+  tools = ..., --- @module 'bodgery.tools'
 })
 
-M.harnesses = vim._defer_require('bodging.harness', {
-  claude = ..., --- @module 'bodging.harness.claude'
+M.harnesses = vim._defer_require('bodgery.harness', {
+  claude = ..., --- @module 'bodgery.harness.claude'
 })
 
 --- @type table<string, table> options from `setup()` by config name
 local options = {}
 
 --- Configs by name, validated on first read.
---- @type table<string, bodging.Config>
+--- @type table<string, bodgery.Config>
 M.configs = setmetatable({}, {
   __index = function(configs, name)
     if not options[name] then
-      error(('bodging: no config named %s, call setup() first'):format(name), 0)
+      error(('bodgery: no config named %s, call setup() first'):format(name), 0)
     end
     configs[name] = M.config.resolve(options[name])
     return rawget(configs, name)
   end,
 })
 
---- @type bodging.http.Server?
+--- @type bodgery.http.Server?
 M.server = nil
 
 --- @type table<string, true> harnesses running on `M.server`
@@ -34,11 +34,11 @@ local started = {}
 
 --- Starts the server and `harness` on it unless they are running.
 --- @param harness string
---- @return bodging.http.Server
+--- @return bodgery.http.Server
 function M.start(harness)
   if not M.server then
-    local mcp = require('bodging.server.mcp')
-    M.server = require('bodging.server.http').start({ auth = M.terminal.lookup })
+    local mcp = require('bodgery.server.mcp')
+    M.server = require('bodgery.server.http').start({ auth = M.terminal.lookup })
     M.server:route(mcp.http_route(mcp.new({ name = 'nvim', tools = M.tools.list }), '/mcp'))
     M.editor.register(M.server)
   end
@@ -61,15 +61,15 @@ function M.stop()
   end
 end
 
---- @param config? bodging.ConfigArg
---- @return bodging.Config?
+--- @param config? bodgery.ConfigArg
+--- @return bodgery.Config?
 local function get(config)
   return config and M.config.get(config)
 end
 
 --- Starts an agent in a terminal and returns its buffer.
---- @param config bodging.ConfigArg
---- @param opts? bodging.OpenOpts
+--- @param config bodgery.ConfigArg
+--- @param opts? bodgery.OpenOpts
 --- @return integer bufnr
 function M.open(config, opts)
   return M.terminal.open(M.config.get(config), opts)
@@ -79,7 +79,7 @@ end
 --- the window `show.window` picks. The current window's terminal is always the target,
 --- and without one `config.active` picks it.
 --- @param bufnr? integer
---- @param config? bodging.ConfigArg
+--- @param config? bodgery.ConfigArg
 function M.toggle(bufnr, config)
   local c = get(config)
   M.terminal.target(bufnr, c, function(term)
@@ -96,14 +96,14 @@ end
 --- reaches `new`.
 --- @param id string
 --- @param bufnr? integer
---- @param config? bodging.ConfigArg
+--- @param config? bodgery.ConfigArg
 function M.resume(id, bufnr, config)
   local c = get(config)
   M.terminal.target(bufnr, c, function(term)
     if term then
       term.harness.resume(term, id)
     elseif not c then
-      error('bodging: pass a config to resume in a new terminal', 0)
+      error('bodgery: pass a config to resume in a new terminal', 0)
     else
       M.terminal.open(c, { args = M.harnesses[c.harness].resume_args(id) })
     end
@@ -111,18 +111,18 @@ function M.resume(id, bufnr, config)
 end
 
 --- @param bufnr? integer
---- @param config? bodging.Config
---- @param fn fun(term: bodging.Terminal)
+--- @param config? bodgery.Config
+--- @param fn fun(term: bodgery.Terminal)
 local function existing(bufnr, config, fn)
   M.terminal.target(bufnr, config, function(term)
-    fn(term or error('bodging: no agent terminal to send to', 0))
+    fn(term or error('bodgery: no agent terminal to send to', 0))
   end)
 end
 
 --- Sends the current visual selection to the target terminal, or the last one in this
 --- buffer.
 --- @param bufnr? integer
---- @param config? bodging.ConfigArg
+--- @param config? bodgery.ConfigArg
 function M.send_selection(bufnr, config)
   existing(bufnr, get(config), function(term)
     term.harness.send_selection()
@@ -133,7 +133,7 @@ end
 --- range.
 --- @param range? integer[] first and last line, 1-based
 --- @param bufnr? integer
---- @param config? bodging.ConfigArg
+--- @param config? bodgery.ConfigArg
 function M.send_at_mention(range, bufnr, config)
   existing(bufnr, get(config), function(term)
     term.harness.send_at_mention(range)
@@ -142,16 +142,16 @@ end
 
 --- Registers or replaces a custom MCP tool, shown to Claude as `mcp__nvim__<name>`.
 --- @param name string
---- @param spec bodging.ToolSpec
+--- @param spec bodgery.ToolSpec
 function M.tool(name, spec)
   M.tools.register(name, spec)
 end
 
 --- Iterates over the sessions of `config`'s harness, newest first. Breaking out of the
 --- loop early skips reading the rest.
---- @param config bodging.ConfigArg
---- @param filter? bodging.SessionFilter
---- @return fun(): bodging.Session?
+--- @param config bodgery.ConfigArg
+--- @param filter? bodgery.SessionFilter
+--- @return fun(): bodgery.Session?
 function M.sessions(config, filter)
   local c = M.config.get(config)
   return M.harnesses[c.harness].sessions(filter, c)
@@ -159,7 +159,7 @@ end
 
 --- Files the agent read or edited in a session.
 --- @param session_id string
---- @param config bodging.ConfigArg
+--- @param config bodgery.ConfigArg
 --- @return string[]
 function M.touched(session_id, config)
   return M.harnesses[M.config.get(config).harness].touched(session_id)
@@ -167,8 +167,8 @@ end
 
 --- Subagents and background tasks of a session.
 --- @param session_id string
---- @param config bodging.ConfigArg
---- @return bodging.Subtask[]
+--- @param config bodgery.ConfigArg
+--- @return bodgery.Subtask[]
 function M.subtasks(session_id, config)
   return M.harnesses[M.config.get(config).harness].subtasks(session_id)
 end
@@ -230,7 +230,7 @@ local function add(opts)
   local command = opts.command or harness:gsub('^%l', string.upper)
   if type(command) ~= 'string' or not command:match('^%u%w*$') then
     error(
-      ('bodging: command: expected a name starting with an uppercase letter, got %s'):format(command),
+      ('bodgery: command: expected a name starting with an uppercase letter, got %s'):format(command),
       0
     )
   end
@@ -242,7 +242,7 @@ end
 --- Creates or replaces the config named `opts.name`, and removes the config `detect()`
 --- created for its harness. Options are validated on first read, and the server starts
 --- with the first terminal.
---- @param opts? table see |bodging.Config|
+--- @param opts? table see |bodgery.Config|
 function M.setup(opts)
   vim.validate('opts', opts, 'table', true)
   opts = opts or {}
@@ -265,7 +265,7 @@ function M.detect()
     configured[o.harness] = true
   end
   for harness in pairs(M.harnesses._submodules) do
-    if not configured[harness] and require(('bodging.harness.%s.config'):format(harness)).detect() then
+    if not configured[harness] and require(('bodgery.harness.%s.config'):format(harness)).detect() then
       add({ harness = harness })
       detected[harness] = true
     end

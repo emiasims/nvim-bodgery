@@ -1,33 +1,33 @@
 local M = {}
 
---- @class bodging.Terminal
+--- @class bodgery.Terminal
 --- @field bufnr integer
 --- @field token string
 --- @field job integer
 --- @field cwd string
---- @field config bodging.Config
+--- @field config bodgery.Config
 --- @field harness table the module `config.harness` names
 --- @field session_id? string
 --- @field status? 'busy'|'idle'|'waiting'
 --- @field entered? number |vim.uv.hrtime()| of the last open or entry
 
---- @class bodging.Context
+--- @class bodgery.Context
 --- @field win integer
 --- @field buf integer
 --- @field tab integer
 
---- A builtin name from |bodging.config.resolvers|, or a function returning a terminal's
+--- A builtin name from |bodgery.config.resolvers|, or a function returning a terminal's
 --- buffer.
---- @alias bodging.Resolver string|fun(ctx: bodging.Context, config?: bodging.Config): integer?
+--- @alias bodgery.Resolver string|fun(ctx: bodgery.Context, config?: bodgery.Config): integer?
 
---- @type table<integer, bodging.Terminal>
+--- @type table<integer, bodgery.Terminal>
 M.terminals = {}
 
---- @type table<string, bodging.Terminal>
+--- @type table<string, bodgery.Terminal>
 local by_token = {}
 
 --- @param token string
---- @return bodging.Terminal?
+--- @return bodgery.Terminal?
 function M.lookup(token)
   return by_token[token]
 end
@@ -42,26 +42,26 @@ local function unregister(bufnr)
 end
 
 --- @param win? integer defaults to the current window
---- @return bodging.Context
+--- @return bodgery.Context
 function M.context(win)
   win = win or vim.api.nvim_get_current_win()
   return { win = win, buf = vim.api.nvim_win_get_buf(win), tab = vim.api.nvim_win_get_tabpage(win) }
 end
 
 --- Makes `term` the terminal of `ctx`'s window, buffer, and tab, and the last one used.
---- @param term bodging.Terminal
---- @param ctx bodging.Context
+--- @param term bodgery.Terminal
+--- @param ctx bodgery.Context
 local function record(term, ctx)
   term.entered = vim.uv.hrtime()
-  vim.w[ctx.win].bodging_term = term.bufnr
+  vim.w[ctx.win].bodgery_term = term.bufnr
   if vim.api.nvim_buf_is_valid(ctx.buf) then
-    vim.b[ctx.buf].bodging_term = term.bufnr
+    vim.b[ctx.buf].bodgery_term = term.bufnr
   end
-  vim.t[ctx.tab].bodging_term = term.bufnr
-  vim.g.bodging_term = term.bufnr
+  vim.t[ctx.tab].bodgery_term = term.bufnr
+  vim.g.bodgery_term = term.bufnr
 end
 
-local group = vim.api.nvim_create_augroup('bodging.terminal', { clear = true })
+local group = vim.api.nvim_create_augroup('bodgery.terminal', { clear = true })
 
 --- @type integer? the window WinLeave left
 local left
@@ -105,7 +105,7 @@ vim.api.nvim_create_autocmd('BufEnter', {
   end,
 })
 
---- @class bodging.OpenOpts
+--- @class bodgery.OpenOpts
 --- @field cwd? string
 --- @field args? string[] appended to `config.cmd`
 --- @field mods? vim.api.keyset.cmd_mods open in a split built by `:new` with these modifiers
@@ -115,12 +115,12 @@ vim.api.nvim_create_autocmd('BufEnter', {
 
 --- Starts an agent in a terminal. Without `mods` or `win` it takes the current window, as
 --- `:terminal` does.
---- @param config bodging.Config
---- @param opts? bodging.OpenOpts
+--- @param config bodgery.Config
+--- @param opts? bodgery.OpenOpts
 --- @return integer bufnr
 function M.open(config, opts)
   opts = opts or {}
-  local cc = require('bodging')
+  local cc = require('bodgery')
   local harness = cc.harnesses[config.harness]
   cc.start(config.harness)
 
@@ -141,7 +141,7 @@ function M.open(config, opts)
     return vim.fn.jobstart(launch.cmd, { term = true, cwd = cwd, env = launch.env })
   end)
   if job <= 0 then
-    error(('bodging: failed to start %s'):format(launch.cmd[1]))
+    error(('bodgery: failed to start %s'):format(launch.cmd[1]))
   end
   -- filetype detection never runs on terminal buffers
   vim.bo[bufnr].filetype = config.harness
@@ -164,7 +164,7 @@ end
 --- text and Enter arriving together as a paste, where Enter adds a newline.
 M.submit_delay = 100
 
---- @param term bodging.Terminal
+--- @param term bodgery.Terminal
 --- @param text string
 local function send(term, text)
   vim.fn.chansend(term.job, text)
@@ -177,7 +177,7 @@ end
 
 --- Types `text` into the terminal and submits it. A busy terminal is handled by
 --- `config.on_busy`.
---- @param term bodging.Terminal
+--- @param term bodgery.Terminal
 --- @param text string
 function M.submit(term, text)
   -- typing into a permission prompt would answer it, so waiting counts as busy
@@ -208,7 +208,7 @@ function M.submit(term, text)
 
   local on_busy = term.config.on_busy
   if on_busy == 'error' then
-    error(('bodging: %s is busy in buffer %d'):format(term.config.name, term.bufnr), 0)
+    error(('bodgery: %s is busy in buffer %d'):format(term.config.name, term.bufnr), 0)
   elseif on_busy == 'prompt' then
     vim.ui.select({ 'interrupt', 'queue' }, {
       prompt = term.config.name .. ' is busy',
@@ -231,22 +231,22 @@ local function live(bufnr)
   return bufnr and M.terminals[bufnr] and bufnr
 end
 
---- @type table<string, fun(ctx: bodging.Context, config?: bodging.Config): integer?>
+--- @type table<string, fun(ctx: bodgery.Context, config?: bodgery.Config): integer?>
 M.resolvers = {
   window = function(ctx)
-    return live(vim.w[ctx.win].bodging_term)
+    return live(vim.w[ctx.win].bodgery_term)
   end,
   buffer = function(ctx)
-    return live(vim.b[ctx.buf].bodging_term)
+    return live(vim.b[ctx.buf].bodgery_term)
   end,
   tab = function(ctx)
-    return live(vim.t[ctx.tab].bodging_term)
+    return live(vim.t[ctx.tab].bodgery_term)
   end,
   global = function()
-    return live(vim.g.bodging_term)
+    return live(vim.g.bodgery_term)
   end,
   project = function(ctx, config)
-    local markers = (config or require('bodging.config').defaults).root_markers
+    local markers = (config or require('bodgery.config').defaults).root_markers
     -- real paths, since buffer names resolve symlinks such as macOS /var and cwds don't
     local function root(source, fallback)
       local dir = vim.fs.root(source, markers) or fallback
@@ -266,15 +266,15 @@ M.resolvers = {
   end,
 }
 
---- @param terms bodging.Terminal[]
---- @param fn fun(term: bodging.Terminal)
+--- @param terms bodgery.Terminal[]
+--- @param fn fun(term: bodgery.Terminal)
 local function pick(terms, fn)
   table.sort(terms, function(a, b)
     return a.bufnr < b.bufnr
   end)
   vim.ui.select(terms, {
     prompt = 'Agent terminal',
-    kind = 'bodging.terminal',
+    kind = 'bodgery.terminal',
     format_item = function(term)
       return ('%d %s %s'):format(term.bufnr, term.config.name, term.session_id or '')
     end,
@@ -289,17 +289,17 @@ end
 --- window's, else the first match of `config.active` (the core default without `config`).
 --- `fn` gets nil when the chain reaches `new`.
 --- @param bufnr? integer
---- @param config? bodging.Config
---- @param fn fun(term?: bodging.Terminal)
+--- @param config? bodgery.Config
+--- @param fn fun(term?: bodgery.Terminal)
 function M.target(bufnr, config, fn)
   if bufnr then
-    return fn(M.terminals[bufnr] or error(('bodging: buffer %d is not an agent terminal'):format(bufnr), 0))
+    return fn(M.terminals[bufnr] or error(('bodgery: buffer %d is not an agent terminal'):format(bufnr), 0))
   end
   local ctx = M.context()
   if M.terminals[ctx.buf] then
     return fn(M.terminals[ctx.buf])
   end
-  for _, resolver in ipairs((config or require('bodging.config').defaults).active) do
+  for _, resolver in ipairs((config or require('bodgery.config').defaults).active) do
     if resolver == 'new' then
       return fn(nil)
     elseif resolver == 'error' then
@@ -316,7 +316,7 @@ function M.target(bufnr, config, fn)
       end
     end
   end
-  error('bodging: no agent terminal found, pass a bufnr', 0)
+  error('bodgery: no agent terminal found, pass a bufnr', 0)
 end
 
 --- The window showing `bufnr` in the current tab.
@@ -350,12 +350,12 @@ end
 
 --- Shows `term` in the window `config.show.window` picks and enters it, or starts a new
 --- terminal there when `term` is nil.
---- @param term? bodging.Terminal
---- @param config? bodging.Config the terminal's own when omitted
+--- @param term? bodgery.Terminal
+--- @param config? bodgery.Config the terminal's own when omitted
 function M.show(term, config)
   config = config or (term and term.config)
   if not config then
-    error('bodging: pass a config to start a new terminal', 0)
+    error('bodgery: pass a config to start a new terminal', 0)
   end
   local win = config.show.window(M.context(), term)
   if term then
@@ -368,7 +368,7 @@ end
 
 --- The most recently used terminal running `harness`.
 --- @param harness string
---- @return bodging.Terminal?
+--- @return bodgery.Terminal?
 function M.last(harness)
   local best
   for _, term in pairs(M.terminals) do

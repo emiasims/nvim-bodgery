@@ -7,10 +7,10 @@ describe('active terminal', function()
     exec_lua(function()
       _G.h = require('test.helpers')
       _G.before = h.handles()
-      _G.cc = require('bodging')
+      _G.cc = require('bodgery')
       cc.setup({ cmd = h.fake_cmd() })
       cc.start('claude')
-      _G.terminal = require('bodging.terminal')
+      _G.terminal = require('bodgery.terminal')
 
       --- Waits until fake-claude in `bufnr` has read `lines` from its terminal.
       function _G.stdin(bufnr, lines)
@@ -55,7 +55,7 @@ describe('active terminal', function()
   describe('resume', function()
     it('targets the current terminal, then the window, tab, and last-used records', function()
       exec_lua(function()
-        h.eq('bodging: pass a config to resume in a new terminal', err(cc.resume, 'x'))
+        h.eq('bodgery: pass a config to resume in a new terminal', err(cc.resume, 'x'))
 
         local a = cc.open('claude')
         cc.resume('one')
@@ -111,7 +111,7 @@ describe('active terminal', function()
 
         vim.cmd.tabnew(root .. '/elsewhere.txt')
         h.eq(
-          'bodging: no agent terminal found, pass a bufnr',
+          'bodgery: no agent terminal found, pass a bufnr',
           err(cc.resume, 'y', nil, { name = 'claude', active = { 'project', 'error' } })
         )
       end)
@@ -135,7 +135,7 @@ describe('active terminal', function()
       exec_lua(function()
         local bufnr = cc.open('claude')
         status(bufnr, 'busy')
-        h.eq('bodging: claude is busy in buffer ' .. bufnr, err(cc.resume, 'x'))
+        h.eq('bodgery: claude is busy in buffer ' .. bufnr, err(cc.resume, 'x'))
 
         cc.configs.claude.on_busy = 'interrupt'
         cc.resume('now')
@@ -188,7 +188,7 @@ describe('active terminal', function()
   describe('toggle', function()
     it('opens, hides, and shows again from the window it was opened from', function()
       exec_lua(function()
-        h.eq('bodging: pass a config to start a new terminal', err(cc.toggle))
+        h.eq('bodgery: pass a config to start a new terminal', err(cc.toggle))
         local file = vim.api.nvim_get_current_win()
 
         cc.toggle(nil, 'claude')
@@ -238,7 +238,7 @@ describe('active terminal', function()
 
   it('picks sessions, subtasks, and touched files through vim.ui.select', function()
     exec_lua(function()
-      local pick = require('bodging.select')
+      local pick = require('bodgery.select')
       local cwd = vim.fn.getcwd()
       local dir = vim.env.CLAUDE_CONFIG_DIR .. '/projects/' .. cwd:gsub('[^%w]', '-')
       vim.fn.mkdir(dir, 'p')
@@ -257,7 +257,7 @@ describe('active terminal', function()
 
       local file = vim.fn.tempname()
       vim.fn.writefile({ 'x' }, file)
-      require('bodging.harness.claude.hooks').sessions.sid = {
+      require('bodgery.harness.claude.hooks').sessions.sid = {
         touched = { file },
         subtasks = { t1 = { id = 't1', kind = 'bash', description = 'sleep', open = true, path = file } },
       }

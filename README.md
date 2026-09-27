@@ -1,4 +1,4 @@
-# bodging.nvim
+# nvim-bodgery
 
 **[Bodge](https://en.wiktionary.org/wiki/bodge)** may refer to:
 - [Bodging](https://en.wikipedia.org/wiki/Bodging), a traditional woodturning craft, especially in chair-making
@@ -21,7 +21,7 @@ Allow as many configurations as you want. Three different claude setups, Pi, and
 Provide autocmds and lua interfaces for agent hooks.
 
 
-An agent terminal is just a buffer. It goes wherever `:terminal` or `:split` would put it, and bodging leaves your windows and tabs alone unless you call it. When something has to open a window, like a diff for review, it splits the current window (vertically if it's wide), and you can hand it a function to do anything else.
+An agent terminal is just a buffer. It goes wherever `:terminal` or `:split` would put it, and bodgery leaves your windows and tabs alone unless you call it. When something has to open a window, like a diff for review, it splits the current window (vertically if it's wide), and you can hand it a function to do anything else.
 
 You get mechanisms and a cookbook. Pickers go through `vim.ui.select`, so the picker you already use shows up. A floating prompt, a dedicated agent tab, and a statusline component are all recipes, and the agent can read the cookbook and adapt one for you.
 
@@ -32,10 +32,10 @@ The agent looks after its own integration. It knows where your config lives, can
 With `claude` on your path and a `~/.claude` directory, loading the plugin is enough. `setup()` replaces that default config:
 
 ```lua
-require('bodging').setup({ harness = 'claude', cmd = { 'claude', '--model', 'opus' } })
+require('bodgery').setup({ harness = 'claude', cmd = { 'claude', '--model', 'opus' } })
 ```
 
-This defines `:Claude`, which takes modifiers the way `:split` does (`:vertical Claude`, `:tab Claude`). `:help bodging` covers the rest.
+This defines `:Claude`, which takes modifiers the way `:split` does (`:vertical Claude`, `:tab Claude`). `:help bodgery` covers the rest.
 
 ## Tools
 

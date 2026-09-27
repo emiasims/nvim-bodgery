@@ -7,10 +7,10 @@ describe('prompt editor', function()
     exec_lua(function()
       _G.h = require('test.helpers')
       _G.before = h.handles()
-      _G.cc = require('bodging')
+      _G.cc = require('bodgery')
       cc.setup({ cmd = h.fake_cmd() })
       cc.start('claude')
-      _G.token = require('bodging.terminal').terminals[cc.open('claude')].token
+      _G.token = require('bodgery.terminal').terminals[cc.open('claude')].token
 
       _G.file = vim.fn.tempname()
       vim.fn.writefile({ 'draft' }, file)
@@ -18,8 +18,8 @@ describe('prompt editor', function()
       --- Runs the EDITOR wrapper on `file` the way Claude does; the result lands in `run.out`.
       function _G.run(tok)
         local run = {}
-        vim.system({ h.root .. '/bin/bodging-editor', file }, {
-          env = { BODGING_TOKEN = tok, CLAUDE_CODE_SSE_PORT = tostring(cc.server.port) },
+        vim.system({ h.root .. '/bin/bodgery-editor', file }, {
+          env = { BODGERY_TOKEN = tok, CLAUDE_CODE_SSE_PORT = tostring(cc.server.port) },
         }, function(out)
           run.out = out
         end)
