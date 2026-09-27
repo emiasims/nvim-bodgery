@@ -46,6 +46,12 @@ validated when first read, so a bad option raises then.
 Terminals get the harness name as their filetype (`claude`), and drafts opened
 from the prompt editor get `markdown.prompt`.
 
+Before Edit, Write, or NotebookEdit writes a file loaded in a buffer, the
+buffer gets 'autoread' until the change is read back (|FileChangedShellPost|),
+so the edit reloads and can be undone. Listeners of ClaudeToolUsePre that
+load the file get this too. Nvim 0.13's filewatcher reloads without a
+|:checktime|.
+
 Only terminals opened by the plugin (|:Claude|, |bodgery.open()|) get
 hooks, events, and custom tools. Each terminal authenticates with its own
 token, passed in the `BODGERY_TOKEN` environment variable.

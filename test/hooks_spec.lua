@@ -165,6 +165,31 @@ describe('hooks', function()
     end)
   end)
 
+  it("sets 'autoread' on an edited buffer until the edit is read back", function()
+    exec_lua(function()
+      -- the 'autoread' filewatcher arrived in 0.13
+      if not pcall(require, 'nvim.autoread') then
+        return
+      end
+      vim.o.autoread = false
+      local path = vim.fn.tempname()
+      vim.fn.writefile({ 'old' }, path)
+      local buf = vim.fn.bufadd(path)
+      vim.fn.bufload(buf)
+
+      local input = h.fixture('PreToolUse-Edit').tool_input
+      send('SessionStart-startup')
+      send('PreToolUse-Edit', nil, { tool_input = vim.tbl_extend('force', input, { file_path = path }) })
+      h.eq(true, vim.api.nvim_get_option_value('autoread', { buf = buf }))
+
+      vim.fn.writefile({ 'new' }, path)
+      h.wait(function()
+        return vim.api.nvim_buf_get_lines(buf, 0, -1, false)[1] == 'new'
+      end, 'reload')
+      h.eq(vim.NIL, vim.api.nvim_get_option_value('autoread', { buf = buf }) or vim.NIL)
+    end)
+  end)
+
   it('opens and closes subtasks', function()
     exec_lua(function()
       send('SessionStart-startup')

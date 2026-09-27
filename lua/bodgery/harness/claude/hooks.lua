@@ -98,6 +98,37 @@ local function touch(term, input)
   end
 end
 
+--- Turns on 'autoread' for a loaded buffer the agent is about to write, until
+--- the write is read back.
+--- @param input table
+local function autoread(input)
+  local key = input.tool_name ~= 'Read' and FILE_TOOLS[input.tool_name]
+  local path = key and type(input.tool_input) == 'table' and input.tool_input[key]
+  local buf = type(path) == 'string' and vim.fn.bufnr(path) or -1
+  if buf == -1 or not vim.api.nvim_buf_is_loaded(buf) then
+    return
+  end
+  -- nil when the buffer has no local value
+  local local_value = vim.api.nvim_get_option_value('autoread', { buf = buf })
+  if local_value or (local_value == nil and vim.o.autoread) then
+    return
+  end
+  -- the filewatcher behind 'autoread' starts from OptionSet in the current buffer
+  vim.api.nvim_buf_call(buf, function()
+    vim.bo.autoread = true
+  end)
+  vim.api.nvim_create_autocmd('FileChangedShellPost', {
+    buffer = buf,
+    once = true,
+    nested = true,
+    callback = function()
+      vim.api.nvim_buf_call(buf, function()
+        vim.cmd(local_value == nil and 'set autoread<' or 'setlocal noautoread')
+      end)
+    end,
+  })
+end
+
 --- Updates terminal state and fires events for one hook payload.
 --- @param event string
 --- @param input table
@@ -140,6 +171,10 @@ function M.on_hook(event, input, term)
         tool_use_id = input.tool_use_id,
       })
     )
+    -- after the event, so a listener that loads the file gets 'autoread' too
+    if event == 'PreToolUse' then
+      autoread(input)
+    end
     touch(term, input)
     local task_id = type(input.tool_response) == 'table' and input.tool_response.backgroundTaskId
     if event == 'PostToolUse' and input.tool_name == 'Bash' and task_id then
