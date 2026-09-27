@@ -44,7 +44,7 @@ IDE websocket, and writes the lockfile Claude's `/ide` command reads
 validated when first read, so a bad option raises then.
 
 Terminals get the harness name as their filetype (`claude`), and drafts opened
-from the prompt editor get `bodge-prompt`.
+from the prompt editor get `markdown.prompt`.
 
 Only terminals opened by the plugin (|:Claude|, |bodgery.open()|) get
 hooks, events, and custom tools. Each terminal authenticates with its own

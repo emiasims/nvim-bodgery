@@ -51,7 +51,7 @@ describe('prompt editor', function()
       h.wait(shown, 'the draft in a window')
       h.eq(wins + 1, #vim.api.nvim_tabpage_list_wins(0))
       h.eq(vim.fn.bufnr(file), vim.api.nvim_get_current_buf())
-      h.eq('bodge-prompt', vim.bo.filetype)
+      h.eq('markdown.prompt', vim.bo.filetype)
       vim.wait(100)
       h.eq(nil, r.out)
 

@@ -7,7 +7,7 @@ local M = {}
 --- @param done fun()
 --- @return fun() cancel
 function M.edit(file, open, done)
-  vim.filetype.add({ filename = { [file] = 'bodge-prompt' } })
+  vim.filetype.add({ filename = { [file] = 'markdown.prompt' } })
   open(file)
   local bufnr = vim.fn.bufnr(file)
   local group = vim.api.nvim_create_augroup('bodgery.editor.' .. bufnr, { clear = true })
