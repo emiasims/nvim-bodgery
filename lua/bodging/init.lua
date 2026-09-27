@@ -11,10 +11,6 @@ M.harnesses = vim._defer_require('bodging.harness', {
   claude = ..., --- @module 'bodging.harness.claude'
 })
 
---- Name of the config used where no terminal picks one: the first `setup()` call's.
---- @type string?
-M.default = nil
-
 --- @type table<string, table> options from `setup()` by config name
 local options = {}
 
@@ -65,16 +61,83 @@ function M.stop()
   end
 end
 
---- The default config's harness.
-local function default_harness()
-  return M.harnesses[M.configs[M.default].harness]
+--- @param config? bodging.ConfigArg
+--- @return bodging.Config?
+local function get(config)
+  return config and M.config.get(config)
 end
 
---- Starts Claude in a terminal and returns its buffer.
+--- Starts an agent in a terminal and returns its buffer.
+--- @param config bodging.ConfigArg
 --- @param opts? bodging.OpenOpts
 --- @return integer bufnr
-function M.open(opts)
-  return M.terminal.open(opts)
+function M.open(config, opts)
+  return M.terminal.open(M.config.get(config), opts)
+end
+
+--- Hides the target terminal where it shows in the current tab, and otherwise shows it in
+--- the window `show.window` picks. The current window's terminal is always the target,
+--- and without one `config.active` picks it.
+--- @param bufnr? integer
+--- @param config? bodging.ConfigArg
+function M.toggle(bufnr, config)
+  local c = get(config)
+  M.terminal.target(bufnr, c, function(term)
+    local win = term and M.terminal.shown(term.bufnr)
+    if win then
+      M.terminal.hide(win)
+    else
+      M.terminal.show(term, c)
+    end
+  end)
+end
+
+--- Resumes session `id` in the target terminal, or in a new terminal when `config.active`
+--- reaches `new`.
+--- @param id string
+--- @param bufnr? integer
+--- @param config? bodging.ConfigArg
+function M.resume(id, bufnr, config)
+  local c = get(config)
+  M.terminal.target(bufnr, c, function(term)
+    if term then
+      term.harness.resume(term, id)
+    elseif not c then
+      error('bodging: pass a config to resume in a new terminal', 0)
+    else
+      M.terminal.open(c, { args = M.harnesses[c.harness].resume_args(id) })
+    end
+  end)
+end
+
+--- @param bufnr? integer
+--- @param config? bodging.Config
+--- @param fn fun(term: bodging.Terminal)
+local function existing(bufnr, config, fn)
+  M.terminal.target(bufnr, config, function(term)
+    fn(term or error('bodging: no agent terminal to send to', 0))
+  end)
+end
+
+--- Sends the current visual selection to the target terminal, or the last one in this
+--- buffer.
+--- @param bufnr? integer
+--- @param config? bodging.ConfigArg
+function M.send_selection(bufnr, config)
+  existing(bufnr, get(config), function(term)
+    term.harness.send_selection()
+  end)
+end
+
+--- Mentions the current file in the target terminal's prompt, optionally with a line
+--- range.
+--- @param range? integer[] first and last line, 1-based
+--- @param bufnr? integer
+--- @param config? bodging.ConfigArg
+function M.send_at_mention(range, bufnr, config)
+  existing(bufnr, get(config), function(term)
+    term.harness.send_at_mention(range)
+  end)
 end
 
 --- Registers or replaces a custom MCP tool, shown to Claude as `mcp__nvim__<name>`.
@@ -84,101 +147,30 @@ function M.tool(name, spec)
   M.tools.register(name, spec)
 end
 
---- Sends the current visual selection to Claude, or the last one in this buffer.
-function M.send_selection()
-  default_harness().send_selection()
-end
-
---- Mentions the current file in Claude's prompt, optionally with a line range.
---- @param range? integer[] first and last line, 1-based
-function M.send_at_mention(range)
-  default_harness().send_at_mention(range)
-end
-
---- @class bodging.SwitchOpts
---- @field new? boolean open a new terminal in the current window instead
-
---- Resumes session `id`: in place by typing the resume command into the active terminal,
---- or with `new` in a new terminal in the current window. A busy terminal is handled by
---- `opts.on_busy`.
---- @param bufnr? integer
---- @param id string
---- @param opts? bodging.SwitchOpts
---- @overload fun(id: string, opts?: bodging.SwitchOpts)
-function M.switch(bufnr, id, opts)
-  if type(bufnr) == 'string' then
-    bufnr, id, opts = nil, bufnr, id --[[@as bodging.SwitchOpts?]]
-  end
-  opts = opts or {}
-  local terminal = M.terminal
-  if opts.new then
-    terminal.open({ args = default_harness().resume(id).args })
-    return
-  end
-
-  local term = terminal.active(bufnr)
-  local resume = term.harness.resume(id)
-  local actions = {
-    interrupt = function()
-      vim.fn.chansend(term.job, '\27')
-      vim.defer_fn(function()
-        terminal.submit(term, resume.keys)
-      end, terminal.submit_delay)
-    end,
-    queue = function()
-      vim.api.nvim_create_autocmd('User', {
-        group = vim.api.nvim_create_augroup('bodging', { clear = false }),
-        pattern = 'ClaudeStatusChanged',
-        callback = function(ev)
-          if ev.data.bufnr == term.bufnr and ev.data.status == 'idle' then
-            terminal.submit(term, resume.keys)
-            return true
-          end
-        end,
-      })
-    end,
-  }
-
-  -- typing into a permission prompt would answer it, so waiting counts as busy
-  if term.status ~= 'busy' and term.status ~= 'waiting' then
-    terminal.submit(term, resume.keys)
-  elseif term.config.on_busy == 'error' then
-    error('bodging: Claude is busy in buffer ' .. term.bufnr, 0)
-  elseif term.config.on_busy == 'prompt' then
-    vim.ui.select({ 'interrupt', 'queue' }, {
-      prompt = 'Claude is busy',
-      format_item = function(item)
-        return item == 'interrupt' and 'Interrupt and resume now' or 'Resume when idle'
-      end,
-    }, function(choice)
-      if choice then
-        actions[choice]()
-      end
-    end)
-  else
-    actions[term.config.on_busy]()
-  end
-end
-
---- Sessions newest first. Breaking out of the loop early skips reading the rest.
+--- Iterates over the sessions of `config`'s harness, newest first. Breaking out of the
+--- loop early skips reading the rest.
+--- @param config bodging.ConfigArg
 --- @param filter? bodging.SessionFilter
 --- @return fun(): bodging.Session?
-function M.sessions(filter)
-  return default_harness().sessions(filter)
+function M.sessions(config, filter)
+  local c = M.config.get(config)
+  return M.harnesses[c.harness].sessions(filter, c)
 end
 
---- Files Claude read or edited in a session.
+--- Files the agent read or edited in a session.
 --- @param session_id string
+--- @param config bodging.ConfigArg
 --- @return string[]
-function M.touched(session_id)
-  return default_harness().touched(session_id)
+function M.touched(session_id, config)
+  return M.harnesses[M.config.get(config).harness].touched(session_id)
 end
 
 --- Subagents and background tasks of a session.
 --- @param session_id string
+--- @param config bodging.ConfigArg
 --- @return bodging.Subtask[]
-function M.subtasks(session_id)
-  return default_harness().subtasks(session_id)
+function M.subtasks(session_id, config)
+  return M.harnesses[M.config.get(config).harness].subtasks(session_id)
 end
 
 --- @type table<string, string[]> config names by user command, the command's default first
@@ -216,7 +208,7 @@ local function register_command(command, name)
     if args[1] and vim.list_contains(names, args[1]) then
       config = table.remove(args, 1)
     end
-    M.open({ config = config, args = args, mods = ev.smods })
+    M.open(config, { args = args, mods = ev.smods })
   end, {
     nargs = '*',
     complete = function(lead)
@@ -244,7 +236,6 @@ local function add(opts)
   end
   options[name] = vim.tbl_extend('force', {}, opts, { name = name, command = command, harness = harness })
   rawset(M.configs, name, nil)
-  M.default = M.default or name
   register_command(command, name)
 end
 
@@ -261,7 +252,6 @@ function M.setup(opts)
       detected[name], options[name] = nil, nil
       rawset(M.configs, name, nil)
       unregister_command(name)
-      M.default = M.default ~= name and M.default or nil
     end
   end
   add(opts)

@@ -194,8 +194,7 @@ end
 function M.attach(group)
   local function auto(fn)
     return function()
-      local cc = require('bodging')
-      if next(M.clients) and cc.configs[cc.default].selection.auto then
+      if next(M.clients) and require('bodging.harness.claude.config').current().selection.auto then
         fn()
       end
     end
@@ -270,8 +269,7 @@ function M.tools()
       end,
     },
   }
-  local cc = require('bodging')
-  if cc.configs[cc.default].execute_code then
+  if require('bodging.harness.claude.config').current().execute_code then
     tools[#tools + 1] = {
       name = 'executeCode',
       description = "Run Lua in the user's Neovim and return the inspected return values",

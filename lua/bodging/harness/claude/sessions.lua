@@ -193,11 +193,10 @@ local function transcripts(cwd)
 end
 
 --- ccd's session records keyed by Claude's session id.
+--- @param root string
 --- @return table<string, { title: string?, isArchived: boolean? }>
-local function ccd_index()
+local function ccd_index(root)
   local out = {}
-  local cc = require('bodging')
-  local root = cc.configs[cc.default].ccd_dir
   for name, kind in vim.fs.dir(root, { depth = 3 }) do
     if kind == 'file' and vim.fs.basename(name):match('^local_.*%.json$') then
       local f = io.open(vim.fs.joinpath(root, name), 'rb')
@@ -241,8 +240,9 @@ end
 
 --- Sessions newest first, reading only the files the requested fields need.
 --- @param filter? bodging.SessionFilter
+--- @param config bodging.Config
 --- @return fun(): bodging.Session?
-function M.sessions(filter)
+function M.sessions(filter, config)
   filter = filter or {}
   local want = {}
   for _, field in ipairs(filter.fields or { 'cwd', 'title', 'archived', 'live', 'bufnr' }) do
@@ -250,7 +250,7 @@ function M.sessions(filter)
   end
   local cwd = filter.cwd and vim.fs.normalize(vim.fs.abspath(filter.cwd))
   local files = transcripts(cwd)
-  local ccd = (want.title or want.archived or filter.archived ~= nil) and ccd_index() or {}
+  local ccd = (want.title or want.archived or filter.archived ~= nil) and ccd_index(config.ccd_dir) or {}
   local live = (want.live or want.title) and M.live() or {}
   local terms = {}
   for bufnr, term in pairs(require('bodging.terminal').terminals) do

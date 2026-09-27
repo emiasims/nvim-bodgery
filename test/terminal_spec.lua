@@ -23,7 +23,7 @@ describe('terminal', function()
 
   it('passes the user flags, then --mcp-config and --settings', function()
     exec_lua(function()
-      local rec = h.record(cc.open())
+      local rec = h.record(cc.open('claude'))
       h.eq({
         '--model',
         'opus',
@@ -43,7 +43,7 @@ describe('terminal', function()
   it('launches each config with its own flags', function()
     exec_lua(function()
       cc.setup({ name = 'plain', cmd = h.fake_cmd() })
-      local a, b = cc.open(), cc.open({ config = 'plain' })
+      local a, b = cc.open('claude'), cc.open('plain')
       h.eq('--model', h.record(a).argv[1])
       h.eq('--mcp-config', h.record(b).argv[1])
       h.eq('claude', terminal.terminals[a].config.name)
@@ -53,7 +53,7 @@ describe('terminal', function()
 
   it('sets the environment Claude reads', function()
     exec_lua(function()
-      local bufnr = cc.open()
+      local bufnr = cc.open('claude')
       local env = h.record(bufnr).env
       h.eq(tostring(cc.server.port), env.CLAUDE_CODE_SSE_PORT)
       h.eq(terminal.terminals[bufnr].token, env.BODGING_TOKEN)
@@ -66,7 +66,7 @@ describe('terminal', function()
     exec_lua(function()
       vim.env.no_proxy = 'example.com,localhost'
       vim.env.NO_PROXY = nil
-      local env = h.record(cc.open()).env
+      local env = h.record(cc.open('claude')).env
       h.eq('example.com,localhost,127.0.0.1', env.no_proxy)
       h.eq('127.0.0.1,localhost', env.NO_PROXY)
     end)
@@ -74,7 +74,7 @@ describe('terminal', function()
 
   it('keeps the token out of the buffer name, argv, and launch files', function()
     exec_lua(function()
-      local bufnr = cc.open()
+      local bufnr = cc.open('claude')
       local token = terminal.terminals[bufnr].token
       local rec = h.record(bufnr)
       local texts = {
@@ -98,7 +98,7 @@ describe('terminal', function()
     exec_lua(function()
       vim.cmd('split | tabnew | vsplit')
       local before = h.layout()
-      local bufnr = cc.open()
+      local bufnr = cc.open('claude')
       local win = vim.api.nvim_get_current_win()
       local function patch(node)
         if node[1] == 'leaf' then
@@ -132,7 +132,7 @@ describe('terminal', function()
           h.eq(other, h.layout()[1], 'other tab after :' .. label)
 
           reset()
-          cc.open({ mods = vim.api.nvim_parse_cmd(mods .. ' split', {}).mods })
+          cc.open('claude', { mods = vim.api.nvim_parse_cmd(mods .. ' split', {}).mods })
           h.eq(expected, h.shape(), 'open() ' .. label)
         end
       end
@@ -148,8 +148,8 @@ describe('terminal', function()
           return 200, { bufnr = req.ctx.bufnr }
         end,
       })
-      local a = cc.open()
-      local b = cc.open({ mods = {} })
+      local a = cc.open('claude')
+      local b = cc.open('claude', { mods = {} })
       local ta, tb = terminal.terminals[a].token, terminal.terminals[b].token
       assert(ta ~= tb)
       h.eq(a, h.request(cc.server.port, 'GET', '/whoami', { token = ta }).json.bufnr)
@@ -197,7 +197,7 @@ describe('terminal', function()
 
   it('sets the harness name as the filetype', function()
     exec_lua(function()
-      h.eq('claude', vim.bo[cc.open()].filetype)
+      h.eq('claude', vim.bo[cc.open('claude')].filetype)
     end)
   end)
 

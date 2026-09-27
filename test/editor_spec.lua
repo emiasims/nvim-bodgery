@@ -10,7 +10,7 @@ describe('prompt editor', function()
       _G.cc = require('bodging')
       cc.setup({ cmd = h.fake_cmd() })
       cc.start('claude')
-      _G.token = require('bodging.terminal').terminals[cc.open()].token
+      _G.token = require('bodging.terminal').terminals[cc.open('claude')].token
 
       _G.file = vim.fn.tempname()
       vim.fn.writefile({ 'draft' }, file)

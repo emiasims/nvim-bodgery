@@ -33,14 +33,25 @@ local function write(entries)
   assert(vim.uv.fs_rename(tmp, path))
 end
 
---- Records every Claude terminal bound to a session, and drops entries older than the
---- default config's `restore.max_age`.
+--- The config `name` names, or nil when there is none.
+--- @param name any
+--- @return bodging.Config?
+local function config(name)
+  local ok, c = pcall(function()
+    return require('bodging').configs[name]
+  end)
+  return type(name) == 'string' and ok and c or nil
+end
+
+--- Records every agent terminal bound to a session, and drops entries older than their
+--- config's `restore.max_age`.
 function M.save()
   local entries = read()
   local now = os.time()
-  local cc = require('bodging')
-  local max_age = cc.configs[cc.default].restore.max_age
+  local default = require('bodging.config').defaults.restore.max_age
   for name, entry in pairs(entries) do
+    local c = type(entry) == 'table' and config(entry.config)
+    local max_age = c and c.restore.max_age or default
     if type(entry) ~= 'table' or now - (tonumber(entry.time) or 0) > max_age then
       entries[name] = nil
     end
@@ -67,13 +78,20 @@ local function held(id, harness)
   return harness.live()[id] ~= nil
 end
 
---- Launches Claude in the restored buffer `bufnr`, resuming its session unless something
+--- Launches the agent in the restored buffer `bufnr`, resuming its session unless something
 --- else holds it.
 --- @param bufnr integer
 --- @param entry bodging.RestoreEntry
 local function relaunch(bufnr, entry)
-  local cc = require('bodging')
-  local harness = cc.harnesses[cc.configs[entry.config or cc.default].harness]
+  local c = config(entry.config)
+  if not c then
+    vim.notify(
+      ('bodging: no config named %s to restore %s'):format(entry.config, entry.session_id),
+      vim.log.levels.WARN
+    )
+    return
+  end
+  local harness = require('bodging').harnesses[c.harness]
   local args
   if held(entry.session_id, harness) then
     vim.notify(
@@ -81,11 +99,11 @@ local function relaunch(bufnr, entry)
       vim.log.levels.WARN
     )
   else
-    args = harness.resume(entry.session_id).args
+    args = harness.resume_args(entry.session_id)
   end
   vim.api.nvim_buf_call(bufnr, function()
     local terminal = require('bodging.terminal')
-    terminal.open({ buf = true, cwd = entry.cwd, args = args, config = entry.config })
+    terminal.open(c, { buf = true, cwd = entry.cwd, args = args })
     if args then
       terminal.terminals[bufnr].session_id = entry.session_id
     end

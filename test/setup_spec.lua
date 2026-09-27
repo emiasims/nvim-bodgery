@@ -22,7 +22,7 @@ local function setup_error(opts)
     local cc = require('bodging')
     local ok, err = pcall(function()
       cc.setup(revive(o))
-      return cc.configs[cc.default]
+      return cc.configs[o.name or o.harness or 'claude']
     end)
     return not ok and err or nil
   end, opts, fn)
@@ -86,10 +86,9 @@ describe('setup', function()
             return cc.configs.claude
           end),
           completion = vim.fn.getcompletion('Claude ', 'cmdline'),
-          default = cc.default,
         }
       end)
-      eq({ ok = false, completion = { 'work' }, default = 'work' }, result)
+      eq({ ok = false, completion = { 'work' } }, result)
     end)
   end)
 
@@ -156,7 +155,7 @@ describe('setup', function()
     local n = exec_lua(function()
       local cc = require('bodging')
       cc.setup({ cmd = 'claude' })
-      pcall(cc.open)
+      pcall(cc.open, 'claude')
       local n = 0
       for _, kind in pairs(require('test.helpers').handles()) do
         n = n + (kind == 'tcp' and 1 or 0)
@@ -183,7 +182,11 @@ describe('setup', function()
     { 'selection.auto', { selection = { auto = 'yes' } } },
     { 'on_busy', { on_busy = 1 } },
     { 'on_busy', { on_busy = 'wait' } },
-    { 'resolve', { resolve = 1 } },
+    { 'active', { active = 'window' } },
+    { 'active[2]', { active = { 'window', 'nope' } } },
+    { 'active[1]', { active = { 1 } } },
+    { 'root_markers[1]', { root_markers = { 1 } } },
+    { 'show.window', { show = { window = 1 } } },
     { 'restore', { restore = 1 } },
     { 'restore.max_age', { restore = { max_age = '1d' } } },
     { 'editor', { editor = fn } },
@@ -215,7 +218,9 @@ describe('setup', function()
       execute_code = true,
       selection = { auto = false },
       on_busy = 'prompt',
-      resolve = fn,
+      active = { 'buffer', fn, 'project', 'pick' },
+      root_markers = { '.git', 'Makefile' },
+      show = { window = fn },
       restore = { max_age = 60 },
       editor = { open = fn },
       ccd_dir = '/tmp',

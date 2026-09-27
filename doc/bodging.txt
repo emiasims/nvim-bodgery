@@ -21,12 +21,21 @@ SETUP                                                      *bodging-setup*
 >lua
   require('bodging').setup({})
 <
-`setup()` stores a config and defines |:Claude| and the session restore
-autocommands. It loads no other module. Each call creates or replaces the
-config named `name`, so several configs, for the same harness or different
-ones, run side by side. The first `setup()` call's config is the default:
-|bodging.open()| uses it when given no `config`, and functions with no
-terminal to take a config from read it.
+Loading the plugin defines the session restore autocommands, and a config
+with its command for each harness installed with a config directory
+(`claude` on the path and `$CLAUDE_CONFIG_DIR` or `~/.claude`).
+
+`setup()` stores a config and defines its command. It loads no other module.
+Each call creates or replaces the config named `name`, so several configs,
+for the same harness or different ones, run side by side, and removes the
+config loading created for its harness.
+
+                                                      *bodging-config-arg*
+Functions taking {config} accept a config name, or a table overriding the
+config its `name` field names:
+>lua
+  require('bodging').toggle(nil, { name = 'claude', active = { 'global', 'new' } })
+<
 
 The first terminal opened starts a
 localhost server that carries Claude's hooks, the `nvim` MCP server, and the
@@ -56,7 +65,9 @@ Defaults:
     execute_code = false,
     selection = { auto = true },
     on_busy = 'error',
-    resolve = nil,
+    active = { 'window', 'tab', 'global', 'new' },
+    root_markers = { '.git' },
+    show = { window = <split of the current window> },
     restore = { max_age = 30 * 24 * 60 * 60 },
     editor = { open = function(file) vim.cmd.split(file) end },
     diff = { inline = true, window = <nearest window to Claude> },
@@ -101,14 +112,23 @@ selection.auto ~
     the next prompt.
 
 on_busy ~
-    What |bodging.switch()| does while Claude is working or waiting on
-    a permission prompt: `'error'` raises, `'interrupt'` sends <Esc> first,
-    `'queue'` waits for the next idle status, and `'prompt'` asks through
-    |vim.ui.select()|.
+    What typing into a terminal does while the agent is working or waiting
+    on a permission prompt, as |bodging.resume()| does: `'error'` raises,
+    `'interrupt'` sends <Esc> first, `'queue'` waits for the next idle
+    status, and `'prompt'` asks through |vim.ui.select()|.
 
-resolve ~
-    `function(): integer?` returning the terminal buffer to act on when zero
-    or several Claude terminals are shown. See |bodging-active|.
+active ~
+    Resolvers tried in order to find the terminal a call acts on. See
+    |bodging-active|.
+
+root_markers ~
+    Markers |vim.fs.root()| looks for in the `project` resolver.
+
+show.window ~
+    `function(ctx, term?): integer` returning the window that shows a hidden
+    terminal, or a new one when `term` is nil. `ctx` has the current `win`,
+    `buf`, and `tab`. The default splits the current window, vertically when
+    it is wide.
 
 restore.max_age ~
     Seconds before an unused entry leaves the restore state file.
@@ -117,7 +137,9 @@ editor.open ~
     `function(file)` that shows the <C-g> draft. See |bodging-editor|.
 
 diff.window ~
-    `function(): integer` returning the window for a proposed edit.
+    `function(): integer` returning the window for a proposed edit. IDE
+    requests can't tell which terminal sent them, so `diff`, `execute_code`,
+    and `selection` come from the last used Claude terminal's config.
 
 diff.inline ~
     Mark inserted and removed characters within changed lines.
@@ -140,37 +162,45 @@ COMMANDS                                                *bodging-commands*
 FUNCTIONS                                                    *bodging-api*
 
                                                          *bodging.open()*
-open({opts})
-    Start Claude in a terminal and return its buffer. Without `mods` the
-    terminal takes the current window, as |:terminal| does.
-    Fields of {opts}:
-      `config`  config name, the default config when omitted
+open({config} [, {opts}])
+    Start {config}'s agent in a terminal and return its buffer. Without
+    `mods` or `win` the terminal takes the current window, as |:terminal|
+    does. Fields of {opts}:
       `cwd`     working directory
       `args`    list appended to `cmd`
       `mods`    |nvim_parse_cmd()| modifiers; open in a split built from them
+      `win`     window to start in, replacing its buffer
+
+                                                       *bodging.toggle()*
+toggle([{bufnr} [, {config}]])
+    Hide the target terminal (|bodging-active|) when it shows in the current
+    tab: close its window, or show the alternate buffer in it when it is the
+    tab's only window. Otherwise show it in the window from `show.window`
+    and enter it. When the chain reaches `new`, start {config}'s agent there.
 
                                                          *bodging.tool()*
 tool({name}, {spec})
     Register or replace a custom tool. See |bodging-tools|.
 
                                                *bodging.send_selection()*
-send_selection()
-    Send the current Visual selection, or the last one in this buffer.
+send_selection([{bufnr} [, {config}]])
+    Send the current Visual selection to the target terminal, or the last
+    one in this buffer.
 
                                               *bodging.send_at_mention()*
-send_at_mention({range})
-    Mention the current file in Claude's prompt. {range} is an optional
-    `{ first, last }` pair of 1-based lines.
+send_at_mention([{range} [, {bufnr} [, {config}]]])
+    Mention the current file in the target terminal's prompt. {range} is an
+    optional `{ first, last }` pair of 1-based lines.
 
-                                                       *bodging.switch()*
-switch([{bufnr},] {id} [, {opts}])
-    Resume session {id} in the active terminal by typing `/resume {id}`.
-    With `{ new = true }` open a new terminal in the current window with
-    `--resume {id}` instead, leaving the old one running.
+                                                       *bodging.resume()*
+resume({id} [, {bufnr} [, {config}]])
+    Resume session {id} in the target terminal by typing `/resume {id}`,
+    subject to `on_busy`. When the chain reaches `new`, start {config}'s
+    agent in the current window with `--resume {id}`.
 
                                                      *bodging.sessions()*
-sessions({filter})
-    Iterator over sessions, newest first. Each record has `id`,
+sessions({config} [, {filter}])
+    Iterator over the sessions of {config}'s harness, newest first. Each record has `id`,
     `last_activity` (seconds since the epoch), `cwd`, `title`, `archived`,
     `live` (`{ pid, status, name }` for a running Claude), and `bufnr` when a
     plugin terminal holds it. Fields of {filter}:
@@ -180,11 +210,11 @@ sessions({filter})
     Leaving the loop early skips reading the remaining transcripts.
 
                                                       *bodging.touched()*
-touched({session_id})
-    Files Claude read or edited in the session.
+touched({session_id}, {config})
+    Files the agent read or edited in the session.
 
                                                      *bodging.subtasks()*
-subtasks({session_id})
+subtasks({session_id}, {config})
     Subagents and background commands of the session. Each has `id`, `kind`
     (`'agent'` or `'bash'`), `description`, `open`, and `path` (the agent's
     transcript, or a finished command's output).
@@ -195,9 +225,20 @@ stop()
     them again.
 
                                                           *bodging-active*
-Functions acting on "the active terminal" use {bufnr} when given, otherwise
-the one Claude terminal shown in the current tab. With none or several shown,
-they call `resolve`, and raise when it returns nothing.
+Functions acting on "the target terminal" use {bufnr} when given, then the
+terminal in the current window, then the first match of {config}'s `active`
+list (the default list without {config}). Entries are functions
+`fn(ctx, config): bufnr?` or these names:
+  `window`   the terminal last opened or entered from the current window
+  `buffer`   the same for the current buffer
+  `tab`      the same for the current tab
+  `global`   the terminal last opened or entered
+  `project`  the last used terminal whose working directory has the same
+             root as the current buffer (`root_markers`)
+  `pick`     ask through |vim.ui.select()|, skipped with no terminals
+  `new`      start a terminal from {config}
+  `error`    raise
+The records behind the first four are `w:`, `b:`, `t:`, and `g:bodging_term`.
 
 ==============================================================================
 PICKERS                                                  *bodging-pickers*
@@ -206,18 +247,19 @@ PICKERS                                                  *bodging-pickers*
 |vim.ui.select()|. Each takes an optional `on_choice(item)` that replaces the
 default action.
 
-sessions({opts})
+sessions({config} [, {opts}])
     Unarchived sessions started in `opts.cwd` (default: |getcwd()|). Choosing
     one shows the terminal holding it, or resumes it with
-    |bodging.switch()|.
+    |bodging.resume()|.
 
-subtasks({opts})
-    Subtasks of `opts.session_id` (default: the active terminal's session).
-    Choosing one opens its transcript or output.
+subtasks([{opts} [, {config}]])
+    Subtasks of `opts.session_id` (default: the target terminal's session).
+    {config} is required with `opts.session_id`. Choosing one opens its
+    transcript or output.
 
-touched({opts})
-    Files touched in `opts.session_id` (default: the active terminal's
-    session). Choosing one edits it.
+touched([{opts} [, {config}]])
+    Files touched in `opts.session_id`, as for `subtasks`. Choosing one
+    edits it.
 
 ==============================================================================
 EVENTS                                                    *bodging-events*
@@ -307,7 +349,7 @@ SESSION RESTORE                                          *bodging-restore*
 
 |:mksession| saves Claude terminals, and sourcing the session file relaunches
 each one with `--resume`, continuing its conversation. Source the session
-file after |bodging.setup()|, or Neovim reruns the saved command and
+file after the plugin loads and the terminal's config exists, or Neovim reruns the saved command and
 starts a new conversation. When the conversation is already open elsewhere,
 the terminal starts a new one and says so.
 

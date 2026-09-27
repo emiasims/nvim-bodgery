@@ -9,16 +9,27 @@ local M = {}
 
 M.capabilities = { ide = true, resume_in_place = true }
 
+--- Typed before text when `on_busy` is `interrupt`.
+M.interrupt = '\27'
+
 M.on_hook = hooks.on_hook
 M.send_selection = ide.send_selection
 M.send_at_mention = ide.send_at_mention
 M.sessions = sessions.sessions
 M.live = sessions.live
 
+--- Types the resume command for session `id` into `term`.
+--- @param term bodging.Terminal
 --- @param id string
---- @return { keys: string, args: string[] }
-function M.resume(id)
-  return { keys = '/resume ' .. id, args = { '--resume', id } }
+function M.resume(term, id)
+  require('bodging.terminal').submit(term, '/resume ' .. id)
+end
+
+--- Arguments that start a terminal in session `id`.
+--- @param id string
+--- @return string[]
+function M.resume_args(id)
+  return { '--resume', id }
 end
 
 --- Files from the transcript, then files hooks reported that it doesn't hold yet.

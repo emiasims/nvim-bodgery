@@ -94,8 +94,7 @@ end
 --- @param d bodging.Diff
 local function render(d)
   vim.api.nvim_buf_clear_namespace(d.bufnr, ns, 0, -1)
-  local cc = require('bodging')
-  local inline = cc.configs[cc.default].diff.inline
+  local inline = require('bodging.harness.claude.config').current().diff.inline
   local new = vim.api.nvim_buf_get_lines(d.bufnr, 0, -1, false)
   local hunks = vim.text.diff(join(d.old), join(new), {
     result_type = 'indices',
@@ -213,8 +212,7 @@ function M.open(args, resolve)
   bo.modified = false
 
   local before = vim.api.nvim_list_wins()
-  local cc = require('bodging')
-  local win = cc.configs[cc.default].diff.window()
+  local win = require('bodging.harness.claude.config').current().diff.window()
   local created = not vim.list_contains(before, win)
   local d = {
     tab_name = args.tab_name,

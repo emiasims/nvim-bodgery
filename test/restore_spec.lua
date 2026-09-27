@@ -41,7 +41,7 @@ end
 local function save(write)
   local tmp = start()
   return exec_lua(function(path, write_fn)
-    local bufnr = cc.open()
+    local bufnr = cc.open('claude')
     terminal.terminals[bufnr].session_id = 'sid-1'
     vim.cmd('botright split | terminal sleep 100')
     if write_fn then

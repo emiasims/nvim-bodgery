@@ -12,102 +12,113 @@ local function ago(sec)
   return ('%dd ago'):format(math.floor(d / 86400))
 end
 
---- The session of the active terminal, or `session_id` when given.
---- @param session_id? string
---- @return string
-local function current_session(session_id)
-  if session_id then
-    return session_id
+--- Calls `fn` with `opts.session_id` and `config`, or the target terminal's session and
+--- config.
+--- @param opts { session_id?: string }
+--- @param config? bodging.ConfigArg
+--- @param fn fun(session_id: string, config: bodging.Config)
+local function with_session(opts, config, fn)
+  local get = require('bodging.config').get
+  if opts.session_id then
+    if not config then
+      error('bodging: pass a config with a session_id', 0)
+    end
+    return fn(opts.session_id, get(config))
   end
-  local term = require('bodging.terminal').active()
-  return term.session_id or error('bodging: the active terminal has no session yet', 0)
-end
-
---- Shows the session in the terminal holding it, or resumes it in the active terminal,
---- or in a new terminal in the current window when there is no active terminal.
---- @param s bodging.Session
-local function open_session(s)
-  local cc = require('bodging')
-  if s.bufnr and vim.api.nvim_buf_is_valid(s.bufnr) then
-    vim.api.nvim_win_set_buf(0, s.bufnr)
-  elseif pcall(require('bodging.terminal').active) then
-    cc.switch(s.id)
-  else
-    cc.switch(s.id, { new = true })
-  end
+  require('bodging.terminal').target(nil, config and get(config), function(term)
+    if not term then
+      error('bodging: no agent terminal to read a session from', 0)
+    end
+    fn(term.session_id or error('bodging: the terminal has no session yet', 0), term.config)
+  end)
 end
 
 --- @class bodging.PickOpts
 --- @field on_choice? fun(item: any) replaces the default action
 
---- Picks a session started in `opts.cwd` (default: the current directory), leaving out
---- archived ones.
+--- Picks a session of `config`'s harness started in `opts.cwd` (default: the current
+--- directory), leaving out archived ones. Choosing shows the terminal holding it, or
+--- resumes it with |bodging.resume()|.
+--- @param config bodging.ConfigArg
 --- @param opts? bodging.PickOpts|{ cwd?: string }
-function M.sessions(opts)
+function M.sessions(config, opts)
   opts = opts or {}
+  local cc = require('bodging')
   local items = {}
-  for s in require('bodging').sessions({ cwd = opts.cwd or vim.fn.getcwd(), archived = false }) do
+  for s in cc.sessions(config, { cwd = opts.cwd or vim.fn.getcwd(), archived = false }) do
     items[#items + 1] = s
   end
   vim.ui.select(items, {
-    prompt = 'Claude session',
+    prompt = 'Session',
     kind = 'bodging.session',
     format_item = function(s)
       local mark = s.bufnr and '* ' or s.live and '+ ' or '  '
       return ('%s%s  (%s)'):format(mark, s.title or s.id, ago(s.last_activity))
     end,
   }, function(s)
-    if s then
-      (opts.on_choice or open_session)(s)
+    if not s then
+      return
+    elseif opts.on_choice then
+      opts.on_choice(s)
+    elseif s.bufnr and vim.api.nvim_buf_is_valid(s.bufnr) then
+      vim.api.nvim_win_set_buf(0, s.bufnr)
+    else
+      cc.resume(s.id, nil, config)
     end
   end)
 end
 
---- Picks a subagent or background command of a session (default: the active terminal's)
---- and opens its transcript or output.
+--- Picks a subagent or background command of `opts.session_id` (default: the target
+--- terminal's session) and opens its transcript or output.
 --- @param opts? bodging.PickOpts|{ session_id?: string }
-function M.subtasks(opts)
+--- @param config? bodging.ConfigArg required with `opts.session_id`
+function M.subtasks(opts, config)
   opts = opts or {}
-  local items = require('bodging').subtasks(current_session(opts.session_id))
-  vim.ui.select(items, {
-    prompt = 'Claude subtask',
-    kind = 'bodging.subtask',
-    format_item = function(t)
-      return ('%s %-5s %s'):format(t.open and '*' or ' ', t.kind, t.description or t.id)
-    end,
-  }, function(t)
-    if not t then
-      return
-    elseif opts.on_choice then
-      opts.on_choice(t)
-    elseif t.path then
-      vim.cmd.edit({ t.path, magic = { file = false } })
-    else
-      vim.notify('bodging: no output yet for ' .. t.id)
-    end
+  with_session(opts, config, function(id, c)
+    local items = require('bodging').subtasks(id, c.name)
+    vim.ui.select(items, {
+      prompt = 'Subtask',
+      kind = 'bodging.subtask',
+      format_item = function(t)
+        return ('%s %-5s %s'):format(t.open and '*' or ' ', t.kind, t.description or t.id)
+      end,
+    }, function(t)
+      if not t then
+        return
+      elseif opts.on_choice then
+        opts.on_choice(t)
+      elseif t.path then
+        vim.cmd.edit({ t.path, magic = { file = false } })
+      else
+        vim.notify('bodging: no output yet for ' .. t.id)
+      end
+    end)
   end)
 end
 
---- Picks a file Claude read or edited in a session (default: the active terminal's) and
---- edits it.
+--- Picks a file the agent read or edited in `opts.session_id` (default: the target
+--- terminal's session) and edits it.
 --- @param opts? bodging.PickOpts|{ session_id?: string }
-function M.touched(opts)
+--- @param config? bodging.ConfigArg required with `opts.session_id`
+function M.touched(opts, config)
   opts = opts or {}
-  local items = require('bodging').touched(current_session(opts.session_id))
-  vim.ui.select(items, {
-    prompt = 'File Claude touched',
-    kind = 'bodging.file',
-    format_item = function(path)
-      return vim.fn.fnamemodify(path, ':~:.')
-    end,
-  }, function(path)
-    if not path then
-      return
-    elseif opts.on_choice then
-      opts.on_choice(path)
-    else
-      vim.cmd.edit({ path, magic = { file = false } })
-    end
+  with_session(opts, config, function(id, c)
+    local items = require('bodging').touched(id, c.name)
+    vim.ui.select(items, {
+      prompt = 'Touched file',
+      kind = 'bodging.file',
+      format_item = function(path)
+        return vim.fn.fnamemodify(path, ':~:.')
+      end,
+    }, function(path)
+      if not path then
+        return
+      elseif opts.on_choice then
+        opts.on_choice(path)
+      else
+        vim.cmd.edit({ path, magic = { file = false } })
+      end
+    end)
   end)
 end
 

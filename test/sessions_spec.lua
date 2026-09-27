@@ -50,7 +50,7 @@ describe('sessions', function()
 
       function _G.collect(filter)
         local out = {}
-        for s in cc.sessions(filter) do
+        for s in cc.sessions('claude', filter) do
           out[#out + 1] = s
         end
         return out
@@ -113,9 +113,9 @@ describe('sessions', function()
       assert(not vim.list_contains(ids({ archived = false }), 's-archived'))
       assert(vim.list_contains(ids({ archived = false }), 's-other'))
 
-      local bufnr = cc.open()
+      local bufnr = cc.open('claude')
       require('bodging.terminal').terminals[bufnr].session_id = 's-ccd'
-      for s in cc.sessions({ cwd = '/home/test/proj' }) do
+      for s in cc.sessions('claude', { cwd = '/home/test/proj' }) do
         h.eq(s.id == 's-ccd' and bufnr or nil, s.bufnr, s.id)
       end
     end)
@@ -177,7 +177,7 @@ describe('sessions', function()
           end,
         }
       end
-      for s in cc.sessions({ cwd = '/home/test/proj', fields = { 'cwd', 'title' } }) do
+      for s in cc.sessions('claude', { cwd = '/home/test/proj', fields = { 'cwd', 'title' } }) do
         if s.id == 's-big' then
           h.eq({ nil, nil }, { s.cwd, s.title })
         end
@@ -197,12 +197,12 @@ describe('sessions', function()
         '/home/test/proj/n.ipynb',
         '/home/test/proj/e.txt',
       }
-      h.eq(expected, cc.touched('s-work'))
+      h.eq(expected, cc.touched('s-work', 'claude'))
 
       require('bodging.harness.claude.hooks').sessions['s-work'] =
         { touched = { '/home/test/proj/b.txt', '/x/new.txt' }, subtasks = {} }
-      h.eq(vim.list_extend(vim.list_slice(expected), { '/x/new.txt' }), cc.touched('s-work'))
-      h.eq({}, cc.touched('no-such-session'))
+      h.eq(vim.list_extend(vim.list_slice(expected), { '/x/new.txt' }), cc.touched('s-work', 'claude'))
+      h.eq({}, cc.touched('no-such-session', 'claude'))
     end)
   end)
 
@@ -213,7 +213,7 @@ describe('sessions', function()
       end
       local function open_ids()
         local out = {}
-        for _, s in ipairs(cc.subtasks('s-work')) do
+        for _, s in ipairs(cc.subtasks('s-work', 'claude')) do
           if s.open then
             out[#out + 1] = s.id
           end
@@ -226,7 +226,7 @@ describe('sessions', function()
         { id = 'agent1', kind = 'agent', description = 'Review', open = false, path = agent('agent1') },
         { id = 'agent2', kind = 'agent', description = 'Search', open = false, path = agent('agent2') },
         { id = 'agent3', kind = 'agent', description = 'Plan', open = false, path = agent('agent3') },
-      }, cc.subtasks('s-work'))
+      }, cc.subtasks('s-work', 'claude'))
 
       live('s-work', vim.fn.getpid())
       h.eq({ 'bash2', 'agent3' }, open_ids())

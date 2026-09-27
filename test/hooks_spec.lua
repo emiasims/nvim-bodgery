@@ -32,7 +32,7 @@ describe('hooks', function()
         },
       })
       cc.start('claude')
-      _G.bufnr = cc.open()
+      _G.bufnr = cc.open('claude')
       _G.token = require('bodging.terminal').terminals[bufnr].token
       _G.fired = h.record_events()
       _G.SID = 'session-1'
@@ -150,7 +150,7 @@ describe('hooks', function()
         'ClaudeToolUsePost',
       }, names('ToolUse'))
 
-      local touched = cc.touched(SID)
+      local touched = cc.touched(SID, 'claude')
       h.eq(3, #touched)
       h.eq('a.txt', vim.fs.basename(touched[1]))
       h.eq('b.txt', vim.fs.basename(touched[2]))
@@ -186,7 +186,7 @@ describe('hooks', function()
       -- the background task is gone from Stop's list
       send('Stop', nil, { background_tasks = {} })
       h.eq('ClaudeSubtaskClose', names('Subtask')[4])
-      h.eq(2, #cc.subtasks(SID))
+      h.eq(2, #cc.subtasks(SID, 'claude'))
     end)
   end)
 

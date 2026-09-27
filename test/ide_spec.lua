@@ -141,6 +141,7 @@ describe('ide tools', function()
 
   it('serves executeCode only when enabled', function()
     exec_lua(function()
+      cc.open('claude', { mods = {} })
       local function names()
         local c = h.ws_connect(cc.server.port, cc.harnesses.claude.state.auth_token)
         c:send_text(vim.json.encode({ jsonrpc = '2.0', id = 1, method = 'tools/list' }))
@@ -175,7 +176,7 @@ describe('ide tools', function()
       c:close()
       h.eq({ 'getDiagnostics', 'openDiff', 'close_tab', 'closeAllDiffTabs' }, ws_names)
 
-      local token = require('bodging.terminal').terminals[cc.open()].token
+      local token = require('bodging.terminal').terminals[cc.open('claude')].token
       local function post(body, sid)
         return h.request(cc.server.port, 'POST', '/mcp', {
           token = token,

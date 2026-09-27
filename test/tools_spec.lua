@@ -49,7 +49,7 @@ describe('custom tools', function()
 
   it('lists a tool registered after initialize', function()
     exec_lua(function()
-      local s = session(cc.open())
+      local s = session(cc.open('claude'))
       h.eq({ 'nvim_help', 'nvim_help_search', 'nvim_helpgrep', 'nvim_screen' }, s.names())
       cc.tool('late', {
         description = 'registered mid-session',
@@ -70,7 +70,7 @@ describe('custom tools', function()
           return ctx
         end,
       })
-      local a, b = cc.open(), cc.open()
+      local a, b = cc.open('claude'), cc.open('claude')
       local terms = require('bodging.terminal').terminals
       h.post_hook(cc.server.port, terms[a].token, h.fixture('SessionStart-startup', { session_id = 'sa' }))
       h.post_hook(cc.server.port, terms[b].token, h.fixture('SessionStart-startup', { session_id = 'sb' }))
@@ -94,7 +94,7 @@ describe('custom tools', function()
       end
 
       vim.opt.runtimepath:append(h.root .. '/test/fixtures/helpdoc')
-      local s = session(cc.open())
+      local s = session(cc.open('claude'))
       h.eq({
         content = {
           {
@@ -113,7 +113,7 @@ describe('custom tools', function()
 
   it('reports an unknown tag as an error with the closest tags', function()
     exec_lua(function()
-      local res = session(cc.open()).call('nvim_help', { tag = 'nvim_buf_get_line' })
+      local res = session(cc.open('claude')).call('nvim_help', { tag = 'nvim_buf_get_line' })
       h.eq(true, res.isError)
       assert(res.content[1].text:find('nvim_buf_get_lines()', 1, true), res.content[1].text)
     end)
@@ -123,7 +123,7 @@ describe('custom tools', function()
     exec_lua(function()
       vim.opt.runtimepath:append(h.root .. '/test/fixtures/helpdoc')
       help.max_results = 2
-      local s = session(cc.open())
+      local s = session(cc.open('claude'))
       local function text(name, pattern)
         return s.call(name, { pattern = pattern }).content[1].text
       end
@@ -145,7 +145,7 @@ describe('custom tools', function()
     exec_lua(function()
       vim.fn.setqflist({}, ' ', { title = 'mine', items = { { filename = 'x', lnum = 1, text = 't' } } })
       local before_qf = vim.fn.getqflist({ all = true })
-      local res = session(cc.open()).call('nvim_helpgrep', { pattern = 'nvim_buf_get_lines' })
+      local res = session(cc.open('claude')).call('nvim_helpgrep', { pattern = 'nvim_buf_get_lines' })
       h.eq(nil, res.isError)
       h.eq(before_qf, vim.fn.getqflist({ all = true }))
       h.eq(1, vim.fn.getqflist({ nr = '$' }).nr)

@@ -14,14 +14,24 @@ local M = {}
 ---   harness name. Configs sharing a command are picked by name as its first argument.
 --- @field tools table<string, bodging.ToolSpec>
 --- @field on_busy 'error'|'interrupt'|'queue'|'prompt'
---- @field resolve? fun(): integer? picks the target terminal when zero or several are shown
+--- @field active bodging.Resolver[] picks the terminal a call without a `bufnr` acts on
+--- @field root_markers string[] passed to |vim.fs.root()| by the `project` resolver
+--- @field show { window: fun(ctx: bodging.Context, term?: bodging.Terminal): integer }
+---   picks the window that shows a hidden or new terminal
 --- @field restore { max_age: number } seconds
 --- @field editor { open: fun(file: string) }
 M.defaults = {
   harness = 'claude',
   tools = {},
   on_busy = 'error',
-  resolve = nil,
+  active = { 'window', 'tab', 'global', 'new' },
+  root_markers = { '.git' },
+  show = {
+    window = function(ctx)
+      local vertical = vim.api.nvim_win_get_width(ctx.win) >= 2 * vim.api.nvim_win_get_height(ctx.win)
+      return vim.api.nvim_open_win(0, false, { vertical = vertical, win = ctx.win })
+    end,
+  },
   restore = { max_age = 30 * 24 * 60 * 60 },
   editor = {
     open = function(file)
@@ -32,8 +42,15 @@ M.defaults = {
 
 local on_busy = { 'error', 'interrupt', 'queue', 'prompt' }
 
+--- Resolvers named in `active`, from `bodging.terminal`.
+M.resolvers = { 'window', 'buffer', 'tab', 'global', 'project', 'new', 'pick', 'error' }
+
+-- replaced whole by a layer that sets them, where tables merge by key
+local lists = { 'active', 'cmd', 'root_markers' }
+
 -- sorted so a parent table is checked before its fields
 local schema = {
+  { 'active', 'table' },
   { 'cmd', 'table' },
   { 'command', 'string' },
   { 'editor', 'table' },
@@ -41,9 +58,11 @@ local schema = {
   { 'harness', 'string' },
   { 'name', 'string' },
   { 'on_busy', 'string' },
-  { 'resolve', 'function', optional = true },
   { 'restore', 'table' },
   { 'restore.max_age', 'number' },
+  { 'root_markers', 'table' },
+  { 'show', 'table' },
+  { 'show.window', 'function' },
   { 'tools', 'table' },
 }
 
@@ -93,6 +112,20 @@ local function validate(opts, harness)
     expect(('cmd[%d]'):format(i), arg, 'string')
   end
 
+  for i, entry in ipairs(opts.active) do
+    local name = ('active[%d]'):format(i)
+    if type(entry) == 'string' then
+      if not vim.list_contains(M.resolvers, entry) then
+        fail('%s: expected one of %s, got %q', name, table.concat(M.resolvers, ', '), entry)
+      end
+    else
+      expect(name, entry, 'function')
+    end
+  end
+  for i, marker in ipairs(opts.root_markers) do
+    expect(('root_markers[%d]'):format(i), marker, 'string')
+  end
+
   if not vim.list_contains(on_busy, opts.on_busy) then
     fail('on_busy: expected one of %s, got %q', table.concat(on_busy, ', '), opts.on_busy)
   end
@@ -122,10 +155,33 @@ function M.resolve(opts)
   local harness = require(('bodging.harness.%s.config'):format(name))
 
   local merged = vim.tbl_deep_extend('force', {}, M.defaults, harness.defaults, opts)
-  -- lists replace the default instead of merging by index
-  merged.cmd = opts.cmd or harness.defaults.cmd
+  for _, key in ipairs(lists) do
+    merged[key] = opts[key] or harness.defaults[key] or M.defaults[key]
+  end
   merged.name = opts.name or merged.harness
   validate(merged, harness)
+  return merged
+end
+
+--- @alias bodging.ConfigArg string|table a config name, or a table with the name of the
+---   config it overrides in `name`
+
+--- The config `config` names, or `config` merged over the config its `name` names.
+--- @param config bodging.ConfigArg
+--- @return bodging.Config
+function M.get(config)
+  local configs = require('bodging').configs
+  if type(config) == 'string' then
+    return configs[config]
+  end
+  expect('config', config, 'table')
+  expect('config.name', config.name, 'string')
+  local base = configs[config.name]
+  local merged = vim.tbl_deep_extend('force', {}, base, config)
+  for _, key in ipairs(lists) do
+    merged[key] = config[key] or base[key]
+  end
+  validate(merged, require(('bodging.harness.%s.config'):format(merged.harness)))
   return merged
 end
 

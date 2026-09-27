@@ -12,7 +12,7 @@ The plugin provides functions, events, and MCP tools, plus a Claude terminal tha
 
 ## Launch
 
-`open({ cwd?, args?, mods? })` starts `claude` in a terminal buffer and returns its `bufnr`. Without `mods` the terminal takes the current window, as Neovim's `:terminal` does. With `mods` it opens in a split that follows `:split` and those modifiers (the `mods` table of `nvim_cmd`), honoring `'splitright'` and `'splitbelow'`. `:Claude [args]` opens a split and passes its modifiers along, so `:vertical Claude`, `:tab Claude`, and `:botright Claude` work as they do for `:split`. `opts.cmd` holds the user's default command and flags.
+`open(config, { cwd?, args?, mods?, win? })` starts the config's agent in a terminal buffer and returns its `bufnr`. Every config is named: there is no default config. Without `mods` or `win` the terminal takes the current window, as Neovim's `:terminal` does. With `mods` it opens in a split that follows `:split` and those modifiers (the `mods` table of `nvim_cmd`), honoring `'splitright'` and `'splitbelow'`. `:Claude [args]` opens a split and passes its modifiers along, so `:vertical Claude`, `:tab Claude`, and `:botright Claude` work as they do for `:split`. `opts.cmd` holds the user's default command and flags.
 
 The launch adds:
 
@@ -99,9 +99,11 @@ Without a ccd title, `title` falls back, in order, to the last `custom-title` re
 
 ## Switching sessions
 
-`switch(bufnr?, id, { new? })` sends `/resume <id>` to a terminal. `new = true` opens a new terminal in the current window instead, leaving any other tab that shows the old terminal untouched. `opts.on_busy = 'error' | 'interrupt' | 'queue' | 'prompt'` decides what happens mid-turn.
+`resume(id, bufnr?, config?)` has the adapter resume session `id` in the target terminal. Claude's adapter types `/resume <id>`. When the `active` chain reaches `new`, it opens a new terminal in the current window with the adapter's resume arguments, leaving any other tab that shows an old terminal untouched. Typing into a terminal goes through `terminal.submit`, where `on_busy = 'error' | 'interrupt' | 'queue' | 'prompt'` decides what happens mid-turn.
 
-Without `bufnr`, the target is the active terminal: the one Claude terminal shown. With none or several shown, the target comes from the call or a resolver in config, and otherwise the call raises.
+`toggle(bufnr?, config?)` hides the target terminal when it shows in the current tab (closing its window, or showing the alternate buffer when it is the tab's only window) and otherwise shows it in the window `show.window` returns.
+
+Without `bufnr`, the target is the current window's terminal, else the first match of the config's `active` list, which defaults to `{ 'window', 'tab', 'global', 'new' }`. Opening or entering a terminal records it in `w:`, `b:`, and `t:bodging_term` of the window it was entered from, and in `g:bodging_term`.
 
 ## Session restore
 

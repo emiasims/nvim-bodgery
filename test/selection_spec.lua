@@ -11,6 +11,8 @@ describe('selection', function()
       cc.setup({ cmd = h.fake_cmd() })
       cc.start('claude')
 
+      -- hidden behind the file, as the target of sends
+      cc.open('claude')
       _G.path = vim.fn.tempname() .. '.txt'
       vim.fn.writefile({ 'hello world', 'second line', 'third' }, path)
       vim.cmd.edit(path)
@@ -106,7 +108,7 @@ describe('selection', function()
 
   it('sends nothing from terminals, help, or scratch buffers', function()
     exec_lua(function()
-      cc.open()
+      cc.open('claude')
       vim.cmd.wincmd('w')
       vim.cmd.enew()
       vim.bo.buftype = 'nofile'

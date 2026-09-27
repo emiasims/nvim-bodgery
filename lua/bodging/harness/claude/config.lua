@@ -51,6 +51,14 @@ function M.detect()
   return vim.fn.executable('claude') == 1 and vim.fn.isdirectory(dir) == 1
 end
 
+--- The config of the most recently used Claude terminal, for IDE requests, which can't
+--- tell which terminal sent them. The defaults when none is open.
+--- @return bodging.claude.Config
+function M.current()
+  local term = require('bodging.terminal').last('claude')
+  return term and term.config or M.defaults
+end
+
 --- Checks what `schema` can't express, after it has passed.
 --- @param opts table
 --- @param fail fun(fmt: string, ...)
