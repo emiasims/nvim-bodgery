@@ -21,13 +21,18 @@ function M.clear(tmp)
   -- the child inherits the runner's environment, and reads it for stdpath() at startup
   vim.uv.os_setenv('XDG_STATE_HOME', tmp .. '/state')
   t.clear()
-  t.exec_lua(function(path, dir)
+  t.exec_lua(function(path, dir, root)
     package.path = path
     vim.env.CLAUDE_CONFIG_DIR = dir .. '/claude'
     vim.env.FAKE_CLAUDE_RECORD = dir .. '/record'
     vim.fn.mkdir(vim.env.CLAUDE_CONFIG_DIR, 'p')
     vim.fn.mkdir(vim.env.FAKE_CLAUDE_RECORD, 'p')
-  end, package.path, tmp)
+    -- a real `claude` on the runner's path would give every test a detected config
+    local search = vim.env.PATH
+    vim.env.PATH = ''
+    vim.cmd.source(root .. '/plugin/bodging.lua')
+    vim.env.PATH = search
+  end, package.path, tmp, M.root)
   return tmp
 end
 

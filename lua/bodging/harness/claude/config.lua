@@ -44,6 +44,13 @@ M.hook_events = {
   'SessionEnd',
 }
 
+--- Whether `claude` is on the path and has a config directory.
+--- @return boolean
+function M.detect()
+  local dir = vim.env.CLAUDE_CONFIG_DIR or vim.fs.normalize('~/.claude')
+  return vim.fn.executable('claude') == 1 and vim.fn.isdirectory(dir) == 1
+end
+
 --- Checks what `schema` can't express, after it has passed.
 --- @param opts table
 --- @param fail fun(fmt: string, ...)

@@ -66,7 +66,7 @@ function M.stop()
 end
 
 --- The default config's harness.
-local function harness()
+local function default_harness()
   return M.harnesses[M.configs[M.default].harness]
 end
 
@@ -86,13 +86,13 @@ end
 
 --- Sends the current visual selection to Claude, or the last one in this buffer.
 function M.send_selection()
-  harness().send_selection()
+  default_harness().send_selection()
 end
 
 --- Mentions the current file in Claude's prompt, optionally with a line range.
 --- @param range? integer[] first and last line, 1-based
 function M.send_at_mention(range)
-  harness().send_at_mention(range)
+  default_harness().send_at_mention(range)
 end
 
 --- @class bodging.SwitchOpts
@@ -112,7 +112,7 @@ function M.switch(bufnr, id, opts)
   opts = opts or {}
   local terminal = M.terminal
   if opts.new then
-    terminal.open({ args = harness().resume(id).args })
+    terminal.open({ args = default_harness().resume(id).args })
     return
   end
 
@@ -164,39 +164,47 @@ end
 --- @param filter? bodging.SessionFilter
 --- @return fun(): bodging.Session?
 function M.sessions(filter)
-  return harness().sessions(filter)
+  return default_harness().sessions(filter)
 end
 
 --- Files Claude read or edited in a session.
 --- @param session_id string
 --- @return string[]
 function M.touched(session_id)
-  return harness().touched(session_id)
+  return default_harness().touched(session_id)
 end
 
 --- Subagents and background tasks of a session.
 --- @param session_id string
 --- @return bodging.Subtask[]
 function M.subtasks(session_id)
-  return harness().subtasks(session_id)
+  return default_harness().subtasks(session_id)
 end
 
 --- @type table<string, string[]> config names by user command, the command's default first
 local commands = {}
 
+--- Removes config `name` from every command but `keep`, and deletes commands left without
+--- a config.
+--- @param name string
+--- @param keep? string
+local function unregister_command(name, keep)
+  for command, names in pairs(commands) do
+    if command ~= keep and vim.list_contains(names, name) then
+      table.remove(names, vim.fn.index(names, name) + 1)
+      if #names == 0 then
+        commands[command] = nil
+        vim.api.nvim_del_user_command(command)
+      end
+    end
+  end
+end
+
 --- Points user command `command` at config `name`, and deletes commands no config uses.
 --- @param command string
 --- @param name string
 local function register_command(command, name)
-  for other, names in pairs(commands) do
-    if other ~= command and vim.list_contains(names, name) then
-      table.remove(names, vim.fn.index(names, name) + 1)
-      if #names == 0 then
-        commands[other] = nil
-        vim.api.nvim_del_user_command(other)
-      end
-    end
-  end
+  unregister_command(name, command)
   local names = commands[command] or {}
   commands[command] = names
   if not vim.list_contains(names, name) then
@@ -220,12 +228,11 @@ local function register_command(command, name)
   })
 end
 
---- Creates or replaces the config named `opts.name`. Options are validated on first read,
---- and the server starts with the first terminal.
---- @param opts? table see |bodging.Config|
-function M.setup(opts)
-  vim.validate('opts', opts, 'table', true)
-  opts = opts or {}
+--- @type table<string, true> names of configs `detect()` created
+local detected = {}
+
+--- @param opts table
+local function add(opts)
   local harness = opts.harness or 'claude'
   local name = opts.name or harness
   local command = opts.command or harness:gsub('^%l', string.upper)
@@ -235,42 +242,44 @@ function M.setup(opts)
       0
     )
   end
-  options[name] = vim.tbl_extend('force', {}, opts, { name = name, command = command })
+  options[name] = vim.tbl_extend('force', {}, opts, { name = name, command = command, harness = harness })
   rawset(M.configs, name, nil)
   M.default = M.default or name
   register_command(command, name)
+end
 
-  local group = vim.api.nvim_create_augroup('bodging', { clear = true })
-  vim.api.nvim_create_autocmd('VimLeavePre', {
-    group = group,
-    desc = 'Stop the bodging server and remove its lockfile',
-    callback = M.stop,
-  })
+--- Creates or replaces the config named `opts.name`, and removes the config `detect()`
+--- created for its harness. Options are validated on first read, and the server starts
+--- with the first terminal.
+--- @param opts? table see |bodging.Config|
+function M.setup(opts)
+  vim.validate('opts', opts, 'table', true)
+  opts = opts or {}
+  local harness = opts.harness or 'claude'
+  for name in pairs(detected) do
+    if options[name].harness == harness then
+      detected[name], options[name] = nil, nil
+      rawset(M.configs, name, nil)
+      unregister_command(name)
+      M.default = M.default ~= name and M.default or nil
+    end
+  end
+  add(opts)
+end
 
-  vim.api.nvim_create_autocmd('SessionWritePost', {
-    group = group,
-    desc = 'Record Claude terminals for session restore',
-    callback = function()
-      M.restore.save()
-    end,
-  })
-  vim.api.nvim_create_autocmd('BufNew', {
-    group = group,
-    pattern = 'term://*',
-    desc = 'Mark restored Claude terminals for relaunch',
-    callback = function(ev)
-      M.restore.on_new(ev)
-    end,
-  })
-  vim.api.nvim_create_autocmd('BufReadCmd', {
-    group = group,
-    pattern = 'term://*',
-    nested = true,
-    desc = 'Relaunch a restored Claude terminal',
-    callback = function(ev)
-      M.restore.on_read(ev)
-    end,
-  })
+--- Creates a default config for each harness whose `detect()` finds it installed, unless
+--- `setup()` already made one for that harness.
+function M.detect()
+  local configured = {}
+  for _, o in pairs(options) do
+    configured[o.harness] = true
+  end
+  for harness in pairs(M.harnesses._submodules) do
+    if not configured[harness] and require(('bodging.harness.%s.config'):format(harness)).detect() then
+      add({ harness = harness })
+      detected[harness] = true
+    end
+  end
 end
 
 return M

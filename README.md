@@ -29,6 +29,8 @@ The agent looks after its own integration. It knows where your config lives, can
 
 ## Setup
 
+With `claude` on your path and a `~/.claude` directory, loading the plugin is enough. `setup()` replaces that default config:
+
 ```lua
 require('bodging').setup({ harness = 'claude', cmd = { 'claude', '--model', 'opus' } })
 ```

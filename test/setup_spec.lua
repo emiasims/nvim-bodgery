@@ -33,12 +33,64 @@ describe('setup', function()
 
   it('loads no other module', function()
     local loaded = exec_lua(function()
+      local before = vim.tbl_keys(package.loaded)
       require('bodging').setup()
       return vim.tbl_filter(function(name)
-        return name:match('^bodging%.') ~= nil
+        return name:match('^bodging%.') ~= nil and not vim.list_contains(before, name)
       end, vim.tbl_keys(package.loaded))
     end)
     eq({}, loaded)
+  end)
+
+  describe('detect', function()
+    --- Puts an executable `claude` alone on the path.
+    local function fake_claude()
+      exec_lua(function()
+        local dir = vim.fn.tempname()
+        vim.fn.mkdir(dir, 'p')
+        vim.fn.writefile({ '#!/bin/sh' }, dir .. '/claude')
+        vim.uv.fs_chmod(dir .. '/claude', 493)
+        vim.env.PATH = dir
+      end)
+    end
+
+    it('creates a config and command for an installed harness', function()
+      fake_claude()
+      local result = exec_lua(function()
+        local cc = require('bodging')
+        cc.detect()
+        return { cmd = cc.configs.claude.cmd, exists = vim.fn.exists(':Claude') }
+      end)
+      eq({ cmd = { 'claude' }, exists = 2 }, result)
+    end)
+
+    it('skips a harness without its config directory', function()
+      fake_claude()
+      local exists = exec_lua(function()
+        vim.fn.delete(vim.env.CLAUDE_CONFIG_DIR, 'rf')
+        require('bodging').detect()
+        return vim.fn.exists(':Claude')
+      end)
+      eq(0, exists)
+    end)
+
+    it('gives way to a setup() config for the same harness', function()
+      fake_claude()
+      local result = exec_lua(function()
+        local cc = require('bodging')
+        cc.detect()
+        cc.setup({ name = 'work' })
+        cc.detect()
+        return {
+          ok = pcall(function()
+            return cc.configs.claude
+          end),
+          completion = vim.fn.getcompletion('Claude ', 'cmdline'),
+          default = cc.default,
+        }
+      end)
+      eq({ ok = false, completion = { 'work' }, default = 'work' }, result)
+    end)
   end)
 
   it('leaves one autocmd per event after a second call', function()
