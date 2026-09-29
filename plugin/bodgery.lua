@@ -15,6 +15,19 @@ vim.api.nvim_create_autocmd('VimLeavePre', {
   end,
 })
 
+-- Neovim 0.13+
+if vim.fn.exists('##SessionWritePre') == 1 then
+  vim.api.nvim_create_autocmd('SessionWritePre', {
+    group = group,
+    desc = 'Move agent terminal windows out of removed directories',
+    callback = function()
+      if package.loaded['bodgery.terminal'] then
+        require('bodgery.restore').before_save()
+      end
+    end,
+  })
+end
+
 vim.api.nvim_create_autocmd('SessionWritePost', {
   group = group,
   desc = 'Record agent terminals for session restore',

@@ -119,6 +119,61 @@ describe('session restore', function()
     end, tmp .. '/session.vim', name)
   end)
 
+  --- In a first child, opens a Claude terminal in a directory, a second tab, and writes a
+  --- session file after removing the directory.
+  --- @param lcd boolean give the terminal's window the directory as its local cwd
+  --- @return string name
+  --- @return string tmp
+  local function save_removed(lcd)
+    local tmp = start()
+    return exec_lua(function(path, dir, lcd_)
+      vim.fn.mkdir(dir, 'p')
+      -- before the :lcd, which a new tab would copy
+      vim.cmd.tabnew()
+      vim.cmd.tabprevious()
+      local bufnr = terminal.open(cc.configs.claude, { cwd = dir })
+      terminal.terminals[bufnr].session_id = 'sid-1'
+      if lcd_ then
+        vim.cmd.lcd(dir)
+      end
+      vim.fn.delete(dir, 'd')
+      vim.cmd.mksession({ path, bang = true })
+      return vim.api.nvim_buf_get_name(bufnr)
+    end, tmp .. '/session.vim', tmp .. '/gone', lcd),
+      tmp
+  end
+
+  --- In a second child, loads the session `save_removed` wrote and checks the terminal
+  --- stayed down with a warning and the rest of the session loaded.
+  --- @param name string
+  --- @param tmp string
+  local function load_removed(name, tmp)
+    start(tmp)
+    exec_lua(function(session, n, dir)
+      local notes = {}
+      vim.notify = function(msg)
+        notes[#notes + 1] = msg
+      end
+      vim.cmd.source(session)
+      h.eq(2, #vim.api.nvim_list_tabpages())
+      h.eq({}, jobs())
+      h.eq(nil, terminal.terminals[vim.fn.bufnr(n)])
+      h.eq({ ('bodgery: %s no longer exists, not restoring sid-1'):format(dir) }, notes)
+    end, tmp .. '/session.vim', name, tmp .. '/gone')
+  end
+
+  it('skips a terminal whose directory was removed', function()
+    load_removed(save_removed(false))
+  end)
+
+  it("loads the rest of the session when a terminal window's local cwd was removed", function()
+    local name, tmp = save_removed(true)
+    if exec_lua('return vim.fn.exists("##SessionWritePre")') == 0 then
+      return pending('needs SessionWritePre (Neovim 0.13)')
+    end
+    load_removed(name, tmp)
+  end)
+
   it('drops entries older than max_age on the next write', function()
     start()
     exec_lua(function()

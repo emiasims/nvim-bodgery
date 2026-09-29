@@ -65,6 +65,26 @@ function M.save()
   write(entries)
 end
 
+--- `SessionWritePre`: moves windows showing agent terminals out of removed working
+--- directories to their nearest existing parent, since the session's `:lcd` into one
+--- aborts loading everything after it.
+function M.before_save()
+  local terminals = require('bodgery.terminal').terminals
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if terminals[vim.api.nvim_win_get_buf(win)] then
+      vim.api.nvim_win_call(win, function()
+        local dir = vim.fn.getcwd()
+        if vim.fn.isdirectory(dir) == 0 and vim.fn.haslocaldir() == 1 then
+          while vim.fn.isdirectory(dir) == 0 do
+            dir = vim.fs.dirname(dir)
+          end
+          vim.cmd.lcd(vim.fn.fnameescape(dir))
+        end
+      end)
+    end
+  end
+end
+
 --- Whether a running Claude or another plugin terminal holds session `id`.
 --- @param id string
 --- @param harness table
@@ -87,6 +107,13 @@ local function relaunch(bufnr, entry)
   if not c then
     vim.notify(
       ('bodgery: no config named %s to restore %s'):format(entry.config, entry.session_id),
+      vim.log.levels.WARN
+    )
+    return
+  end
+  if vim.fn.isdirectory(entry.cwd) == 0 then
+    vim.notify(
+      ('bodgery: %s no longer exists, not restoring %s'):format(entry.cwd, entry.session_id),
       vim.log.levels.WARN
     )
     return
