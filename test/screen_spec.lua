@@ -77,6 +77,21 @@ describe('nvim_screen', function()
     }, screen.highlights)
   end)
 
+  it('leaves highlights defined in a namespace intact', function()
+    exec_lua(function()
+      _G.ns = vim.api.nvim_create_namespace('test')
+      vim.api.nvim_set_hl(ns, 'Normal', { fg = 0xff0000, bg = 0x00ff00 })
+      vim.api.nvim_win_set_hl_ns(0, ns)
+    end)
+    call({ highlights = true })
+    helpers.eq(
+      { fg = 0xff0000, bg = 0x00ff00 },
+      exec_lua(function()
+        return vim.api.nvim_get_hl(ns, { name = 'Normal' })
+      end)
+    )
+  end)
+
   it('reports a screen that is not drawn in time as an error', function()
     exec_lua(function()
       require('bodgery.tools.screen').timeout = 0

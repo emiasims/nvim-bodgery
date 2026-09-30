@@ -60,12 +60,13 @@ end
 --- @param opts { highlights?: boolean }
 --- @param callback fun(screen: bodgery.Screen?, err: string?)
 --- @return fun() cancel
-function M.capture(opts, callback)
+local function attach(opts, callback)
   local addr, started = vim.v.servername, false
   if addr == '' then
     addr, started = vim.fn.serverstart(), true
   end
   local width, height = vim.o.columns, vim.o.lines
+  local ui_opts = { ext_linegrid = true, ext_hlstate = opts.highlights == true, rgb = true }
   local pipe = assert(vim.uv.new_pipe())
   local timer = assert(vim.uv.new_timer())
   local session = vim.mpack.Session({ unpack = vim.mpack.Unpacker({ ext = {} }) })
@@ -149,14 +150,46 @@ function M.capture(opts, callback)
       end
     end)
     pipe:write(
-      session:notify()
-        .. vim.mpack.encode('nvim_ui_attach')
-        .. vim.mpack.encode({ width, height, { ext_linegrid = true, ext_hlstate = true, rgb = true } })
+      session:notify() .. vim.mpack.encode('nvim_ui_attach') .. vim.mpack.encode({ width, height, ui_opts })
     )
   end)
 
   return function()
     finish()
+  end
+end
+
+local renumbered = false
+
+--- @param opts { highlights?: boolean }
+--- @param callback fun(screen: bodgery.Screen?, err: string?)
+--- @return fun() cancel
+function M.capture(opts, callback)
+  if renumbered or not opts.highlights then
+    return attach(opts, callback)
+  end
+  -- the first UI to attach with ext_hlstate makes Neovim renumber every highlight
+  -- attribute, and highlights set with nvim_set_hl(ns, ...) keep the old numbers. Re-set
+  -- them, then capture again so the snapshot shows the repaired colors.
+  local saved = {}
+  for _, ns in pairs(vim.api.nvim_get_namespaces()) do
+    saved[ns] = vim.api.nvim_get_hl(ns, {})
+  end
+  local cancel
+  cancel = attach(opts, function(_, err)
+    for ns, hls in pairs(saved) do
+      for name, hl in pairs(hls) do
+        vim.api.nvim_set_hl(ns, name, hl)
+      end
+    end
+    if err then
+      return callback(nil, err)
+    end
+    renumbered = true
+    cancel = attach(opts, callback)
+  end)
+  return function()
+    cancel()
   end
 end
 
