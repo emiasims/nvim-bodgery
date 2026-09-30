@@ -66,15 +66,12 @@ describe('hooks', function()
   it('binds the session on SessionStart', function()
     exec_lua(function()
       send('SessionStart-startup')
-      h.eq(
+      h.eq({
         {
-          {
-            'ClaudeSessionEnter',
-            { session_id = SID, bufnr = bufnr, config = 'claude', source = 'startup' },
-          },
+          'ClaudeSessionEnter',
+          { session_id = SID, bufnr = bufnr, config = 'claude', source = 'startup' },
         },
-        fired
-      )
+      }, fired)
       h.eq(SID, require('bodgery.terminal').terminals[bufnr].session_id)
     end)
   end)
@@ -95,15 +92,12 @@ describe('hooks', function()
         return done
       end, 'curl')
       h.eq({ 0, '{}' }, { done.code, done.stdout })
-      h.eq(
+      h.eq({
         {
-          {
-            'ClaudeSessionEnter',
-            { session_id = SID, bufnr = bufnr, config = 'claude', source = 'startup' },
-          },
+          'ClaudeSessionEnter',
+          { session_id = SID, bufnr = bufnr, config = 'claude', source = 'startup' },
         },
-        fired
-      )
+      }, fired)
     end)
   end)
 

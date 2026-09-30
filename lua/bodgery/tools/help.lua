@@ -172,7 +172,7 @@ M.tools = {
       .. 'as `:help` would show it. Use it whenever the user writes `:h {subject}` or '
       .. "`:help {subject}`, or points you to Neovim's help or docs. Tags look like "
       .. "'nvim_buf_get_lines()', ':split', 'vim.lsp.buf.hover()', or 'plugin-name-config', "
-      .. "and options are quoted: `:h autoread` is the tag \"'autoread'\". "
+      .. 'and options are quoted: `:h autoread` is the tag "\'autoread\'". '
       .. 'Find tags with nvim_help_search.',
     M.help
   ),

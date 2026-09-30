@@ -85,7 +85,7 @@ describe('nvim_quickfix', function()
 
   it("reads a window's location list", function()
     local loc = ok('nvim_quickfix', { list = 'location' })
-    helpers.eq({ 'local', 1, helpers.root .. '/q3' },{ loc.title, loc.size, loc.items[1].filename })
+    helpers.eq({ 'local', 1, helpers.root .. '/q3' }, { loc.title, loc.size, loc.items[1].filename })
     helpers.eq('no window 9999', fails('nvim_quickfix', { list = 'location', window = 9999 }))
   end)
 end)
