@@ -50,14 +50,25 @@ describe('custom tools', function()
   it('lists a tool registered after initialize', function()
     exec_lua(function()
       local s = session(cc.open('claude'))
-      h.eq({ 'nvim_help', 'nvim_help_search', 'nvim_helpgrep', 'nvim_screen' }, s.names())
+      local builtin = {
+        'nvim_buffers',
+        'nvim_help',
+        'nvim_help_search',
+        'nvim_helpgrep',
+        'nvim_messages',
+        'nvim_quickfix',
+        'nvim_rpc_read',
+        'nvim_rpc_write',
+        'nvim_screen',
+      }
+      h.eq(builtin, s.names())
       cc.tool('late', {
         description = 'registered mid-session',
         handler = function()
           return { ok = true }
         end,
       })
-      h.eq({ 'late', 'nvim_help', 'nvim_help_search', 'nvim_helpgrep', 'nvim_screen' }, s.names())
+      h.eq({ 'late', unpack(builtin) }, s.names())
       h.eq({ content = { { type = 'text', text = '{"ok":true}' } } }, s.call('late', {}))
     end)
   end)

@@ -344,14 +344,30 @@ calling terminal's `bufnr`. A returned string is sent as text and a table as
 JSON. An error becomes an error result for Claude.
 
 Built in:
+  `nvim_buffers`      buffers as `:ls` shows them, by `scope`: `listed`,
+                      `unlisted`, `all`, `visible` (in a window on any tab),
+                      or `tab` (in a window on the current tab)
   `nvim_help`         the help section from a tag to the next tag
   `nvim_help_search`  help tags matching a pattern
   `nvim_helpgrep`     help text matching a pattern, leaving the quickfix
                       list alone
-  `nvim_screen`       the screen as text, one line per row; with
+  `nvim_messages`     the |:messages| history, or its `count` most recent
+                      entries
+  `nvim_quickfix`     the quickfix list, or a window's location list, one
+                      page of `limit` entries from `offset`, with the list's
+                      title, size, and current entry
+  `nvim_rpc_read`     calls an |api| function whose verb is `get`, `list`,
+                      `is`, `has`, or `parse` (|dev-api-name|)
+  `nvim_rpc_write`    calls any other |api| function, including
+                      `nvim_exec_lua`
+  `nvim_screen`      the screen as text, one line per row; with
                       `highlights`, also `{ row, first, last, group }` runs
                       in 1-based screen cells. Every UI redraws fully once
                       per call.
+
+Claude Code asks before each call to a tool its settings don't allow. To let
+Claude read the session freely while still confirming changes, allow
+`mcp__nvim__nvim_rpc_read` and leave `mcp__nvim__nvim_rpc_write` out.
 
 Claude also calls `getDiagnostics` before and after each edit. The reply
 covers |vim.diagnostic| entries and treesitter syntax errors in loaded

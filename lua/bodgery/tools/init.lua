@@ -10,8 +10,8 @@ function M.register(name, spec)
   registered[name] = spec
 end
 
---- The built-in help and screen tools and every tool from `term`'s config and `register()`,
---- sorted by name. A user tool with a built-in's name replaces it. Handlers receive
+--- The built-in tools and every tool from `term`'s config and `register()`, sorted by
+--- name. A user tool with a built-in's name replaces it. Handlers receive
 --- `ctx = { session_id, bufnr }` for the calling terminal.
 --- @param term bodgery.Terminal
 --- @return bodgery.mcp.Tool[]
@@ -20,7 +20,13 @@ function M.list(term)
     'force',
     {},
     require('bodgery.tools.help').tools,
-    { nvim_screen = require('bodgery.tools.screen').tool },
+    require('bodgery.tools.rpc').tools,
+    {
+      nvim_screen = require('bodgery.tools.screen').tool,
+      nvim_buffers = require('bodgery.tools.buffers').tool,
+      nvim_messages = require('bodgery.tools.messages').tool,
+      nvim_quickfix = require('bodgery.tools.quickfix').tool,
+    },
     term.config.tools,
     registered
   )
