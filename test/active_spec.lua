@@ -199,6 +199,32 @@ describe('active terminal', function()
       end)
     end)
 
+    it('clears the records of an exited terminal and falls back past them', function()
+      exec_lua(function()
+        local a = cc.open('claude')
+        vim.cmd.tabnew()
+        local b = cc.open('claude')
+        vim.cmd.vsplit()
+        vim.cmd.enew()
+        vim.w.bodgery_term, vim.b.bodgery_term = b, b
+        h.eq({ b, b }, { vim.g.bodgery_term, vim.t.bodgery_term })
+
+        vim.fn.jobstop(terminal.terminals[b].job)
+        vim.wait(1000, function()
+          return not terminal.terminals[b]
+        end)
+        h.eq({ a }, { vim.g.bodgery_term, vim.t.bodgery_term, vim.w.bodgery_term, vim.b.bodgery_term })
+        cc.resume('x')
+        h.eq({ '/resume x' }, stdin(a, { 1 }))
+
+        vim.fn.jobstop(terminal.terminals[a].job)
+        vim.wait(1000, function()
+          return not terminal.terminals[a]
+        end)
+        h.eq({}, { vim.g.bodgery_term, vim.t.bodgery_term })
+      end)
+    end)
+
     it('opens a new terminal in the current window when the chain reaches new', function()
       exec_lua(function()
         local old = cc.open('claude')

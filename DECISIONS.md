@@ -109,6 +109,7 @@ Without `bufnr`, the target is the current window's terminal, else the first mat
 - The chain finding a terminal through `global`, `project`, `pick`, or a function after an empty scoped record: the last empty scoped record takes it, so a tab that falls through to `g:` keeps that terminal from then on. A hit on a scoped record writes nothing.
 - An explicit choice (`toggle(b)`, `show(b)`, the picker): the current scope and `g:` take it.
 - A window showing terminal `a` switching to terminal `b` (`BufLeave` and `BufEnter` in the same window): every record in the tab that held `a` (`t:`, and `w:`/`b:` of its windows) takes `b`, or the current scope does when none did. A record pointing at another terminal is left alone, so a swap in a pinned window does not retarget the rest of the tab. `g:` takes `b`, and other tabs are untouched.
+- A terminal exiting: every record holding it clears, and `g:` passes to the most recently chosen terminal left.
 
 ## Session restore
 

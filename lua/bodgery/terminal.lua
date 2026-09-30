@@ -32,12 +32,35 @@ function M.lookup(token)
   return by_token[token]
 end
 
+--- Forgets the terminal in `bufnr` and clears every scoped record holding it, so resolvers
+--- fall through to the next one. The global record passes to the most recently chosen
+--- terminal left.
 --- @param bufnr integer
 local function unregister(bufnr)
   local term = M.terminals[bufnr]
-  if term then
-    M.terminals[bufnr] = nil
-    by_token[term.token] = nil
+  if not term then
+    return
+  end
+  M.terminals[bufnr] = nil
+  by_token[term.token] = nil
+  if vim.g.bodgery_term == bufnr then
+    local last = M.last()
+    vim.g.bodgery_term = last and last.bufnr
+  end
+  local records = {}
+  for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
+    records[#records + 1] = vim.t[tab]
+  end
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    records[#records + 1] = vim.w[win]
+  end
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    records[#records + 1] = vim.b[buf]
+  end
+  for _, vars in ipairs(records) do
+    if vars.bodgery_term == bufnr then
+      vars.bodgery_term = nil
+    end
   end
 end
 
@@ -192,7 +215,9 @@ function M.open(config, opts)
   M.terminals[bufnr] = term
   by_token[token] = term
   M.choose(term, origin)
-  vim.api.nvim_create_autocmd('BufWipeout', {
+  -- an exited terminal's buffer outlives its session, and showing it again after it is
+  -- unloaded restarts the command through Neovim's term:// BufReadCmd
+  vim.api.nvim_create_autocmd({ 'TermClose', 'BufWipeout' }, {
     buffer = bufnr,
     once = true,
     callback = function()
@@ -414,13 +439,16 @@ function M.show(term, config)
   vim.api.nvim_set_current_win(win)
 end
 
---- The most recently used terminal running `harness`.
---- @param harness string
+--- The most recently used terminal, running `harness` when given.
+--- @param harness? string
 --- @return bodgery.Terminal?
 function M.last(harness)
   local best
   for _, term in pairs(M.terminals) do
-    if term.config.harness == harness and (not best or (term.entered or 0) > (best.entered or 0)) then
+    if
+      (not harness or term.config.harness == harness)
+      and (not best or (term.entered or 0) > (best.entered or 0))
+    then
       best = term
     end
   end

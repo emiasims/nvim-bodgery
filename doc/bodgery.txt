@@ -268,6 +268,8 @@ Moving between windows changes none of them. They change when:
   - a window showing a terminal switches to another terminal: every record in
     the tab that held the old one takes the new one, or the current scope
     does when none did, and `g:bodgery_term` takes it
+  - a terminal exits: the records holding it clear, and `g:bodgery_term`
+    passes to the most recently chosen terminal left
 
 ==============================================================================
 PICKERS                                                  *bodgery-pickers*
