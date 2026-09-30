@@ -356,7 +356,9 @@ function M.live()
         f:close()
       end
       if rec and type(rec.sessionId) == 'string' and type(rec.pid) == 'number' and alive(rec.pid) then
-        out[rec.sessionId] = { pid = rec.pid, status = rec.status, name = rec.name }
+        -- derived names are cwd-plus-number placeholders that change on every resume
+        local chosen = rec.nameSource ~= 'derived' and rec.name or nil
+        out[rec.sessionId] = { pid = rec.pid, status = rec.status, name = chosen }
       end
     end
   end
