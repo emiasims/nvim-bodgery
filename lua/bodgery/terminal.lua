@@ -82,24 +82,22 @@ local function nearest(config)
   return found
 end
 
---- Makes `term` the global terminal while there is none, and otherwise the terminal of
---- `ctx`'s nearest scope.
+--- Makes `term` the terminal of `ctx`'s nearest scope and the global terminal.
 --- @param term bodgery.Terminal
 --- @param ctx bodgery.Context
 --- @param config? bodgery.Config
 function M.choose(term, ctx, config)
   term.entered = vim.uv.hrtime()
-  local scope = live(vim.g.bodgery_term) and nearest(config or term.config)
+  local scope = nearest(config or term.config)
   local vars = scope and scopes[scope](ctx)
   if vars then
     vars.bodgery_term = term.bufnr
-  else
-    vim.g.bodgery_term = term.bufnr
   end
+  vim.g.bodgery_term = term.bufnr
 end
 
 --- Points each record in `ctx`'s tab that held `old` at `new`, or `ctx`'s nearest scope
---- when none did.
+--- when none did, and makes `new` the global terminal.
 --- @param old bodgery.Terminal
 --- @param new bodgery.Terminal
 --- @param ctx bodgery.Context
@@ -118,6 +116,7 @@ local function follow(old, new, ctx)
   end
   if moved then
     new.entered = vim.uv.hrtime()
+    vim.g.bodgery_term = new.bufnr
   else
     M.choose(new, ctx)
   end

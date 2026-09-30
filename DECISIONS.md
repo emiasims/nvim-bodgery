@@ -105,10 +105,10 @@ Without a ccd title, `title` falls back, in order, to the last `custom-title` re
 
 Without `bufnr`, the target is the current window's terminal, else the first match of the config's `active` list, which defaults to `{ 'window', 'tab', 'global', 'new' }`. The records behind `window`, `buffer`, `tab`, and `global` are `w:`, `b:`, `t:`, and `g:bodgery_term`. Toggling goes to the most recently chosen terminal that makes sense where the user is. Moving between windows never changes a record, since glancing at a terminal is not choosing it. Records change only on these events:
 
-- Opening a terminal: the first one fills `g:`, later ones fill the current scope (the last of `window`, `buffer`, `tab` in `active`, so `t:` by default).
+- Opening a terminal: it fills the current scope (the last of `window`, `buffer`, `tab` in `active`, so `t:` by default) and `g:`. `g:` holds the latest choice, so a tab with no record of its own gets the terminal used last.
 - The chain finding a terminal through `global`, `project`, `pick`, or a function after an empty scoped record: the last empty scoped record takes it, so a tab that falls through to `g:` keeps that terminal from then on. A hit on a scoped record writes nothing.
-- An explicit choice (`toggle(b)`, `show(b)`, the picker): the current scope takes it.
-- A window showing terminal `a` switching to terminal `b` (`BufLeave` and `BufEnter` in the same window): every record in the tab that held `a` (`t:`, and `w:`/`b:` of its windows) takes `b`, or the current scope does when none did. A record pointing at another terminal is left alone, so a swap in a pinned window does not retarget the rest of the tab. `g:` and other tabs are untouched.
+- An explicit choice (`toggle(b)`, `show(b)`, the picker): the current scope and `g:` take it.
+- A window showing terminal `a` switching to terminal `b` (`BufLeave` and `BufEnter` in the same window): every record in the tab that held `a` (`t:`, and `w:`/`b:` of its windows) takes `b`, or the current scope does when none did. A record pointing at another terminal is left alone, so a swap in a pinned window does not retarget the rest of the tab. `g:` takes `b`, and other tabs are untouched.
 
 ## Session restore
 

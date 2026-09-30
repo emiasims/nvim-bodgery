@@ -249,7 +249,7 @@ list (the default list without {config}). Entries are functions
   `window`   the terminal recorded for the current window
   `buffer`   the same for the current buffer
   `tab`      the same for the current tab
-  `global`   the first terminal opened while none was open
+  `global`   the terminal most recently opened or chosen
   `project`  the last used terminal whose working directory has the same
              root as the current buffer (`root_markers`)
   `pick`     ask through |vim.ui.select()|, skipped with no terminals
@@ -259,16 +259,15 @@ list (the default list without {config}). Entries are functions
                                                          *bodgery-records*
 The records behind the first four are `w:`, `b:`, `t:`, and `g:bodgery_term`.
 Moving between windows changes none of them. They change when:
-  - a terminal opens: the first one fills `g:bodgery_term`, and later ones
-    fill the record of the last of `window`, `buffer`, and `tab` in
-    `active`, the "current scope"
+  - a terminal opens: it fills `g:bodgery_term` and the record of the last
+    of `window`, `buffer`, and `tab` in `active`, the "current scope"
   - `global`, `project`, `pick`, or a function finds a terminal after an
     empty scoped record: that terminal fills the last such record
   - |bodgery.toggle()|, |bodgery.show()|, or the terminal picker is given a
-    terminal: it fills the current scope
+    terminal: it fills the current scope and `g:bodgery_term`
   - a window showing a terminal switches to another terminal: every record in
     the tab that held the old one takes the new one, or the current scope
-    does when none did
+    does when none did, and `g:bodgery_term` takes it
 
 ==============================================================================
 PICKERS                                                  *bodgery-pickers*
